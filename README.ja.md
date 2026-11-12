@@ -1,7 +1,5 @@
 <p align="center"><img src="docs/hero.gif" alt="夜の机。窓の外に星と街、画面に図が光り、下に端末の入力欄で grill-visual と出ている" width="100%"></p>
 
-<h1 align="center">grill-visual</h1>
-
 <p align="center"><b>図を見ながら、AI と計画を詰める。</b><br>
 未決の問いを 1 つずつ図にした HTML のページを作ります。図を見て案を選ぶだけで決定がたまり、最後にまとめとタスクの一覧が残ります。</p>
 
