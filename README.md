@@ -1,7 +1,5 @@
 <p align="center"><img src="docs/hero.gif" alt="A desk at night with stars and a city outside the window. A diagram glows on the screen, and a terminal prompt at the bottom reads grill-visual" width="100%"></p>
 
-<h1 align="center">grill-visual</h1>
-
 <p align="center"><b>Settle a plan with your AI by looking at pictures.</b><br>
 Each open question becomes a diagram on an HTML page. You look, pick, and the decisions pile up into a summary and a task list.</p>
 
