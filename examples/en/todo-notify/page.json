@@ -1,0 +1,159 @@
+{
+  "version": 3,
+  "date": "2026-11-12",
+  "round": 2,
+  "status": "ended",
+  "limits": { "q": null, "r": null },
+  "direction": "blueprint",
+  "title": "Add notifications to a to-do app without making them noisy",
+  "lead": "You can write a due time, but you only notice it by opening the app. This page decides where, when and how many notifications to send. All 6 questions are decided and the discussion is over.",
+  "intro": [
+    {
+      "id": "now",
+      "eyebrow": "NOW · the app today",
+      "title": "You can set a due time, but you only notice it by opening the app",
+      "lead": "This is about a made-up to-do app. You write \"Buy milk by 18:00\", and you find out it is overdue only when you open the app at 21:00.",
+      "figs": ["fig/intro.js"],
+      "note": "All numbers are examples."
+    }
+  ],
+  "map": {
+    "eyebrow": "MAP · how the questions depend on each other",
+    "title": "Once \"where\" is decided, the rest can be decided",
+    "lead": "Select a tag to jump to that question.",
+    "nodes": [
+      { "id": "Q01", "name": "Where to show it" },
+      { "id": "Q02", "name": "When to notify" },
+      { "id": "Q03", "name": "When to ask permission" },
+      { "id": "Q04", "name": "Daily limit" },
+      { "id": "Q05", "name": "Actions on a notification" },
+      { "id": "Q06", "name": "Quiet hours" }
+    ]
+  },
+  "end": "Nothing is left open. The decisions (6) and the tasks (6) are in summary.html.",
+  "questions": [
+    {
+      "id": "Q01", "round": 1, "title": "Where should notifications appear?", "impact": "High", "undo": "Can change later (needs a rebuild)", "after": [],
+      "background": "The app lets you write a due time, but nothing tells you when it is near. Most people probably have the app closed for most of the day (assumption).",
+      "issue": "Where the notification appears decides whether you notice it while the app is closed. A device notification needs a permission step (Q03) and a limit on the count (Q04).",
+      "options": [
+        { "key": "A", "name": "In-app badge", "text": "Show a \"due soon\" badge when the app is opened", "pros": "No permission needed; cheap to build", "cons": "You notice only after opening the app. Today's problem stays" },
+        { "key": "B", "name": "Device notification", "text": "Send a device notification that also shows on the lock screen", "pros": "You notice it by glancing at the screen", "cons": "Needs permission. Noisy if there are many" },
+        { "key": "C", "name": "Morning email", "text": "Email one message at 7:00 every morning with that day's to-dos", "pros": "No permission needed; quiet, once a day", "cons": "Too late for urgent due times. Never reaches people who don't read email" }
+      ],
+      "recommended": ["B"],
+      "why": "The problem is not noticing while the app is closed. Only B reaches you then. Q04 and Q06 can keep the noise down.",
+      "order": "Difference: whether you notice in each of 3 situations while the app is closed / Means: a real phone screen and a badge per situation\nProtagonist: the lock screen / Layers: N = today, A, B, C change the screen and the badges",
+      "fig": "fig/q01.js", "fig_top": "Where it appears, and whether you notice while closed"
+    },
+    {
+      "id": "Q02", "round": 1, "title": "When should it notify?", "impact": "Medium", "undo": "Can change later", "after": ["Q01"],
+      "background": "A due time can include the hour (for example, milk 18:00, invoice 23:00). You need time to act after being notified.",
+      "issue": "Should the notification fire exactly at the due time, before it, or in a morning roundup? If before, how long before?",
+      "options": [
+        { "key": "A", "name": "At the due time", "text": "Notify exactly at the due time", "pros": "Easy to understand", "cons": "By the time you know, it is too late" },
+        { "key": "B", "name": "1 hour before", "text": "Notify 1 hour before the due time", "pros": "You have time to act", "cons": "1 hour is not enough for some tasks (could be made selectable later)" },
+        { "key": "C", "name": "9:00 roundup", "text": "Notify once at 9:00 with everything due that day", "pros": "Just one, so it is quiet", "cons": "By the evening you have forgotten an evening deadline" }
+      ],
+      "recommended": ["B"],
+      "why": "The goal is that you can act when you find out. One hour is enough for most tasks, and the count stays equal to the number of due items.",
+      "order": "Difference: when it fires for 3 due items / Means: a time ruler with a square for each due time and a circle for each notification\nProtagonist: the position of the circle / Layers: N, A, B, C move the circles",
+      "fig": "fig/q02.js", "fig_top": "Due times, and when it fires"
+    },
+    {
+      "id": "Q03", "round": 1, "title": "When should the app ask for notification permission?", "impact": "High", "undo": "Hard to ask again after a refusal", "after": ["Q01"],
+      "background": "Device notifications arrive only if the user allows them. After a refusal, they stay off until the user turns them on in the device settings.",
+      "issue": "At which moment does the permission dialog appear? Can we ask when the reason is clear?",
+      "options": [
+        { "key": "A", "name": "First launch", "text": "Ask the moment the app is opened for the first time", "pros": "Simple to build. Asks everyone once", "cons": "It is unclear what the notifications are for, so people refuse" },
+        { "key": "B", "name": "First due time set", "text": "Ask right after the first due time is set", "pros": "The reason for notifications is clear on the spot", "cons": "People who never set a due time are never asked" },
+        { "key": "C", "name": "Settings only", "text": "Show no dialog; put a \"Notifications on\" switch in settings", "pros": "Not pushy", "cons": "Reaches only people who open settings" }
+      ],
+      "recommended": ["B"],
+      "why": "Only people who set a due time need notifications. Right after they do, the reason (\"to remind you of the due time\") is clear, so they are more likely to allow it (assumption).",
+      "order": "Difference: at which moment the dialog appears, and whether the notification arrives / Means: step player over 3 screens from first use\nProtagonist: the permission dialog / Layers: A, B, C move the moment of the dialog",
+      "fig": "fig/q03.js", "fig_top": "Three moments from first use, and the dialog",
+      "steps": ["1 Open the app for the first time.", "2 Set a due time of 18:00 on Buy milk.", "3 One hour before the due time. Does the notification arrive?"]
+    },
+    {
+      "id": "Q04", "round": 2, "title": "How many notifications per day?", "impact": "Medium", "undo": "Can change later", "after": ["Q02"],
+      "background": "Q02 decided to notify 1 hour before the due time. On a day with 12 due items, it fires 12 times.",
+      "issue": "On a busy day, how many individual notifications should go out, and what happens to the rest?",
+      "options": [
+        { "key": "A", "name": "No limit", "text": "Notify one by one for every due item", "pros": "Nothing is missed", "cons": "Too many on a busy day, so people stop looking" },
+        { "key": "B", "name": "Up to 3 + roundup", "text": "Individual notifications for the 3 nearest due times; the rest in one roundup in the evening", "pros": "Urgent ones arrive, and it stays quiet", "cons": "The 4th and later do not fire 1 hour before" },
+        { "key": "C", "name": "1 per day", "text": "Send one roundup in the morning only", "pros": "Quietest", "cons": "The \"1 hour before\" from Q02 disappears" }
+      ],
+      "recommended": ["B"],
+      "why": "When there are too many, people stop reading notifications at all. Sending the 3 urgent ones individually and grouping the rest protects both.",
+      "order": "Difference: how many notifications arrive on a day with 12 due items / Means: horizontal count bars (individual and roundup)\nProtagonist: the length of the individual bar / Layers: A, B, C change the bars",
+      "fig": "fig/q04.json", "fig_top": "Notifications on a busy day"
+    },
+    {
+      "id": "Q05", "round": 2, "title": "What can you do from a notification?", "impact": "Medium", "undo": "Can change later", "after": ["Q01"],
+      "background": "Today, to mark a to-do as finished you open the app and look for it.",
+      "issue": "Should the notification have buttons or an input field?",
+      "options": [
+        { "key": "A", "name": "Open only", "text": "Tapping it opens the app", "pros": "Cheap to build", "cons": "Takes 3 steps, and you forget while you are in the app" },
+        { "key": "B", "name": "Done and in 1 hour", "text": "Add \"Done\" and \"Remind me in 1 hour\" buttons", "pros": "One step", "cons": "Button wording and behavior must be checked on each device" },
+        { "key": "C", "name": "Reply to change the due time", "text": "Type something like \"tomorrow morning\" in a reply field to change the due time", "pros": "Free-form changes", "cons": "Phrases can be misread. Costly to build" }
+      ],
+      "recommended": ["B"],
+      "why": "What someone looking at a notification wants is either \"done\" or \"later\". Two buttons are enough.",
+      "order": "Difference: what is added to the same notification, and the number of steps to finish / Means: a real notification and step tags\nProtagonist: the buttons on the notification / Layers: A, B, C change the buttons and the steps",
+      "fig": "fig/q05.js", "fig_top": "The notification, and steps to finish"
+    },
+    {
+      "id": "Q06", "round": 2, "title": "Should there be quiet hours at night?", "impact": "Low", "undo": "Can change later", "after": ["Q02"],
+      "background": "Notifying 1 hour before means a 23:00 due time fires at 22:00. Some people are asleep.",
+      "issue": "Should there be hours when nothing fires? If so, how do we notify about due times that fall inside them?",
+      "options": [
+        { "key": "A", "name": "No quiet hours", "text": "Fire 1 hour before, whatever the time", "pros": "One rule, easy to understand", "cons": "May wake someone in the night" },
+        { "key": "B", "name": "22:00 to 7:00", "text": "Do not fire from 22:00 to 7:00; notify about due times in that window at 21:30, before it goes quiet", "pros": "Quiet at night, and still in time for the due time", "cons": "21:30 can be earlier than 1 hour before" },
+        { "key": "C", "name": "Leave it to the device", "text": "The app decides nothing; rely on the device's focus mode", "pros": "Nothing to build", "cons": "Whether it fires depends on each person's settings, so it is unpredictable" }
+      ],
+      "recommended": ["B"],
+      "why": "Night due times (such as paying an invoice) really exist. Moving the notification earlier protects both quiet and being on time.",
+      "order": "Difference: where the notification for a 23:00 due time fires / Means: a 0 to 24 ruler with a quiet band\nProtagonist: the position of the circle / Layers: N, A, B, C change the band and the circle",
+      "fig": "fig/q06.js", "fig_top": "Quiet hours, and a night due time"
+    }
+  ],
+  "decisions": [
+    { "id": "Q01", "round": 1, "pick": ["B"], "group": "How it shows", "wide": true, "line": "Send a device notification", "adopted": "Send a device notification that also shows on the lock screen.", "reason": "Only B reaches you while the app is closed (as recommended).", "cost": "Needs permission (Q03). Noisy if there are many (kept down by Q04 and Q06).", "rejected": "A In-app badge · C Morning email", "before": { "fig": "fig/q01.js", "layers": ["N"] }, "after": { "fig": "fig/q01.js", "layers": ["B"] }, "cap_before": "You notice only after opening", "cap_after": "A badge shows on the lock screen" },
+    { "id": "Q02", "round": 1, "pick": ["B"], "group": "How it shows", "line": "Notify 1 hour before the due time", "adopted": "Notify 1 hour before the due time.", "reason": "You can act when you find out (as recommended).", "cost": "1 hour is not enough for some tasks. The lead time could be made selectable later.", "rejected": "A At the due time · C 9:00 roundup", "before": { "fig": "fig/q02.js", "layers": ["N"] }, "after": { "fig": "fig/q02.js", "layers": ["B"] }, "cap_before": "Nothing fires", "cap_after": "Fires 1 hour before" },
+    { "id": "Q03", "round": 1, "pick": ["B"], "group": "First use", "line": "Ask permission when the first due time is set", "adopted": "Ask for notification permission right after the first due time is set.", "reason": "The reason is clear on the spot (as recommended).", "cost": "People who never set a due time are never asked.", "rejected": "A First launch · C Settings only", "before": { "fig": "fig/q03.js", "layers": ["C"] }, "after": { "fig": "fig/q03.js", "layers": ["B"] }, "cap_before": "No moment to ask", "cap_after": "Asked right after setting a due time" },
+    { "id": "Q04", "round": 2, "pick": ["B"], "group": "Keeping it quiet", "line": "3 individual a day; the rest in one evening message", "adopted": "Individual notifications for the 3 nearest due times each day. The rest go out as one roundup at 21:30.", "reason": "Urgent ones arrive and busy days stay quiet (as recommended).", "cost": "The 4th and later do not fire 1 hour before.", "rejected": "A No limit · C 1 per day", "before": { "fig": "fig/q04.json", "layers": ["A"] }, "after": { "fig": "fig/q04.json", "layers": ["B"] }, "cap_before": "12 with no limit", "cap_after": "3 + 1 roundup" },
+    { "id": "Q05", "round": 2, "pick": ["B"], "group": "How it shows", "line": "\"Done\" and \"In 1 hour\" buttons", "adopted": "Add two buttons to the notification: \"Done\" and \"Remind me in 1 hour\".", "reason": "It takes one step (as recommended).", "cost": "Button wording and behavior must be checked on each device.", "rejected": "A Open only · C Reply to change the due time", "before": { "fig": "fig/q05.js", "layers": ["A"] }, "after": { "fig": "fig/q05.js", "layers": ["B"] }, "cap_before": "Open, find it: 3 steps", "cap_after": "Tap: 1 step" },
+    { "id": "Q06", "round": 2, "pick": ["B"], "group": "Keeping it quiet", "line": "Quiet 22:00 to 7:00; notify earlier instead", "adopted": "Do not fire from 22:00 to 7:00. For due times in that window, notify at 21:30, before it goes quiet.", "reason": "Quiet at night, and still in time for the due time (as recommended).", "cost": "21:30 can be earlier than 1 hour before.", "rejected": "A No quiet hours · C Leave it to the device", "before": { "fig": "fig/q06.js", "layers": ["A"] }, "after": { "fig": "fig/q06.js", "layers": ["B"] }, "cap_before": "Fires at 22:00", "cap_after": "Moved earlier to 21:30" }
+  ],
+  "summary": {
+    "title": "The to-do app sends a device notification 1 hour before the due time, and keeps the noise down with a daily limit and night hours",
+    "lead": "People who set a due time get a lock-screen notification 1 hour before, and can tap \"Done\" from it. At most 3 individual notifications fire per day, and nothing fires at night.",
+    "big": { "title": "Notifications after the decisions", "fig": "fig/s-big.js" },
+    "mech_title": "From a due time to a notification, and how many arrive",
+    "mech": [
+      { "title": "From a due time to a notification", "fig": "fig/s-flow.js", "full": true, "steps": ["Set a due time. If it is the first, ask for permission here (Q03).", "Set the fire time to 1 hour before the due time (Q02).", "If it falls between 22:00 and 7:00, move it earlier to 21:30 (Q06).", "Up to the 3rd one today is sent individually; from the 4th on, it goes into the evening roundup (Q04).", "Send the notification with \"Done\" and \"In 1 hour\" buttons (Q01, Q05)."] },
+      { "title": "Notifications on a day with 12 due items", "fig": "fig/s-day.json", "full": true }
+    ],
+    "groups": [
+      { "name": "How it shows", "sub": "Where, when and what you can do" },
+      { "name": "First use", "sub": "When to ask for permission" },
+      { "name": "Keeping it quiet", "sub": "The count and night hours" }
+    ],
+    "tasks_title": "Build order (drawn from tasks.json)",
+    "assumptions": [
+      "Permission is more likely right after a due time is set (assumption). If wrong: revisit Q03 and add an explanation screen before the permission dialog",
+      "3 a day is not annoying (estimate). If wrong: change the limit number in Q04"
+    ],
+    "revisit": [
+      "Fewer than half of users allow notifications → revisit Q03",
+      "Roundup notifications go unread → try Q04 option C (one in the morning)"
+    ],
+    "history_title": "How 6 questions were decided in 2 rounds",
+    "end_notes": ["summary.html was written", "tasks.json (6 tasks)", "Nothing is built yet"]
+  },
+  "rounds": [
+    { "n": 1, "version": 1, "date": "2026-11-12", "asked": ["Q01", "Q02", "Q03"], "notes": ["All 3 as recommended"] },
+    { "n": 2, "version": 2, "date": "2026-11-12", "asked": ["Q04", "Q05", "Q06"], "notes": ["Q06 note \"What about night due times?\" → added the move-earlier rule to B"] }
+  ]
+}

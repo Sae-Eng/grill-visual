@@ -1,0 +1,69 @@
+/* html-foundation の tokens.css — 変数だけ(references/02-look.md・04-parts.md)。
+   既定(書体・文字の段・余白と線と角)は、どの方向でも同じ値。
+   色は <html data-direction="blueprint|instrument|paper"> で方向の組を切り替える。無ければ blueprint。
+   ダークは OS の設定に従う。<html data-theme="light|dark"> を付けると、そちらを優先する。
+   ページの <style> の頭に中身ごと貼る。題材に合わせて --accent などを上書きしてよい(02-look.md「色の決め方」)。
+   自分の部品を持つ作り手(grill-visual など)は、これだけを貼り、部品をこの変数で描く。 */
+
+/* ---------- 既定: 書体・文字の段・余白と線と角 ---------- */
+:root{
+  --font:"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",system-ui,sans-serif;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  --fs:15px;--fs-s:13px;--fs-label:12px;--fs-h3:17px;--fs-h2:20px;--fs-h1:26px;
+  --lh:1.7;--lh-s:1.5;--lh-h:1.4;
+  --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:24px;--s6:32px;--s7:48px;
+  --r:4px;--r-chip:3px;--rule:1.5px;--hit:44px;
+  --measure:40em;--page:1080px;
+  --fig-min:940px; /* 絵の最小幅。viewBox の幅 1000・文字 12 なら、表示で 11px 以上を保つ */
+}
+
+/* ---------- 方向の組: 設計図とレビュー票(blueprint・既定) ---------- */
+:root{
+  --bg:#ffffff;--surface:#ffffff;--paper:#f6f7f9;
+  --ink:#16191d;--sub:#5b636d;--mute:#6b727c;--line:#e1e4e8;--line2:#eef0f3;--frame:#9aa1ab;--stroke:#c9ced6;
+  --accent:#2747c0;--accent-soft:#e8ecfb;--on-accent:#ffffff;
+  --q:#8a6100;--q-soft:#faf0d4;--ok:#1f7a4d;--ok-soft:#e4f2ea;--ng:#c4312b;--ng-soft:#fbeceb;
+  --grid:rgba(39,71,192,.07);--focus:#ffd43d;
+}
+/* ---------- 計器盤(instrument): 状態・数・比べ ---------- */
+:root[data-direction="instrument"]{
+  --bg:#f3f4f6;--surface:#ffffff;--paper:#eceef1;
+  --ink:#14171a;--sub:#555d66;--mute:#68707a;--line:#dde1e6;--line2:#eceef1;--frame:#98a0aa;--stroke:#c6ccd4;
+  --accent:#0e7490;--accent-soft:#e0f1f5;--on-accent:#ffffff;
+  --grid:transparent;
+}
+/* ---------- 紙の資料(paper): 読み物・手順書。地は白に近い灰(生成りにしない) ---------- */
+:root[data-direction="paper"]{
+  --bg:#fcfcfc;--surface:#ffffff;--paper:#f4f5f6;
+  --ink:#1b1d20;--sub:#575c63;--mute:#6a7078;--line:#e3e5e8;--line2:#f0f1f3;--frame:#9ca1a8;--stroke:#cbcfd4;
+  --accent:#1f4e79;--accent-soft:#e6eef6;--on-accent:#ffffff;
+  --grid:transparent;--measure:36em;
+}
+
+/* ---------- ダーク: 地は暗く(#111417)、面は地より少し明るくして浮かせる。本文と地は 15.9:1。
+   色は鮮やかさを抑えた淡い色のまま(鮮やかな色を暗い地に置くとチカチカする)。地は方向で変えず、強調の色だけ変える ---------- */
+:root[data-theme="dark"]{
+  --bg:#111417;--surface:#1a1e23;--paper:#1d2126;
+  --ink:#eceef1;--sub:#b9c0c8;--mute:#8e959e;--line:#2a2f36;--line2:#20242a;--frame:#737a84;--stroke:#3a3f46;
+  --accent:#9fb0ec;--accent-soft:#2b303d;--on-accent:#111417;
+  --q:#d4b06a;--q-soft:#343026;--ok:#82c095;--ok-soft:#25332e;--ng:#e88a85;--ng-soft:#38292b;
+  --grid:rgba(159,176,236,.05);--focus:#c9a43a;
+}
+:root[data-theme="dark"][data-direction="instrument"]{--accent:#67c3d8;--accent-soft:#20343a;--grid:transparent}
+:root[data-theme="dark"][data-direction="paper"]{--accent:#8fb3d9;--accent-soft:#28313a;--grid:transparent}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#111417;--surface:#1a1e23;--paper:#1d2126;
+    --ink:#eceef1;--sub:#b9c0c8;--mute:#8e959e;--line:#2a2f36;--line2:#20242a;--frame:#737a84;--stroke:#3a3f46;
+    --accent:#9fb0ec;--accent-soft:#2b303d;--on-accent:#111417;
+    --q:#d4b06a;--q-soft:#343026;--ok:#82c095;--ok-soft:#25332e;--ng:#e88a85;--ng-soft:#38292b;
+    --grid:rgba(159,176,236,.05);--focus:#c9a43a;
+  }
+  :root[data-direction="instrument"]:not([data-theme="light"]){--accent:#67c3d8;--accent-soft:#20343a;--grid:transparent}
+  :root[data-direction="paper"]:not([data-theme="light"]){--accent:#8fb3d9;--accent-soft:#28313a;--grid:transparent}
+}
+
+/* 入力欄とスクロールバーの明暗も合わせる */
+html{color-scheme:light dark}
+:root[data-theme="light"]{color-scheme:light}
+:root[data-theme="dark"]{color-scheme:dark}

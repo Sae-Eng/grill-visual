@@ -1,0 +1,109 @@
+<!-- grill-visual のまとめ（summary.html）のひな形。build.mjs が page.json と tasks.json から埋める。モデルは読まない・書かない。
+     章の順番（0 ヘッダー → 1 完成形 → 2 仕組み → 3 決定 → 4 タスク → 5 却下・仮定 → 6 経緯 → 7 未決）は固定（references/summary.md）。
+     書き方は parts.html と同じ（<!-- @名前 -->、{{x}} は文字、{{{x}}} は HTML）。 -->
+<!-- @head -->
+  <div class="top">
+    <div>
+      <div class="topline"><p class="eyebrow">GRILL-VISUAL · summary · v{{version}} · {{date}}</p><span class="theme-sw" role="group" aria-label="Light or dark"><button type="button" data-theme-set="light" aria-pressed="true">Light</button><button type="button" data-theme-set="dark" aria-pressed="false">Dark</button></span></div>
+      <h1>{{title}}</h1>
+      <p class="lead">{{lead}}</p>
+    </div>
+    <div class="stats"><span class="stat"><b>{{decided}}</b> decided</span><span class="stat"><b>{{open}}</b> open</span><span class="stat"><b id="n-task">{{tasks}}</b> tasks (proposals <span id="n-prop">{{props}}</span>)</span><span class="stat"><b>{{rounds}}</b> rounds · {{asked}} questions</span></div>
+  </div>
+  {{{progress}}}
+  <nav class="toc" aria-label="Chapters">{{{toc}}}</nav>
+  {{{changes}}}
+<!-- @progress-top -->
+  <div class="prog prog-top"><b><span id="n-pct">—</span>%</b><div class="bar" role="progressbar" aria-label="Progress of task steps"><i id="t-bar"></i></div><a class="small" href="#s4">Tasks <span id="t-done">—</span> done</a></div>
+<!-- @changes -->
+  <div class="changes"><b>Changes since the previous version</b><ul>{{{items}}}</ul></div>
+<!-- @s1 -->
+  <section class="card" id="s1" aria-labelledby="s1t">
+    <p class="eyebrow">1 · Finished picture</p>
+    <h2 id="s1t">{{title}}</h2>
+    <p class="lead small">{{lead}}</p>
+    <div class="wide-fig">{{{fig}}}</div>
+  </section>
+<!-- @s2 -->
+  <section class="card" id="s2" aria-labelledby="s2t">
+    <p class="eyebrow">2 · Mechanism</p>
+    <h2 id="s2t">{{title}}</h2>
+    <div class="mech">{{{panels}}}</div>
+  </section>
+<!-- @panel -->
+      <div class="panel{{full}}"><h4>{{title}}</h4><div class="{{box}}">{{{fig}}}</div>{{{player}}}</div>
+<!-- @s3 -->
+  <section class="card" id="s3" aria-labelledby="s3t">
+    <p class="eyebrow">3 · Decisions ({{n}})</p>
+    <h2 id="s3t">What was decided</h2>
+    <p class="lead small">Diagrams show the after state. "Before" at the top right switches to the state before the decision. Reasons, inconveniences and compared options are folded.</p>
+    {{{groups}}}
+  </section>
+<!-- @dgroup -->
+    <div class="dgroup"><h3 class="gh">{{name}}<span>{{sub}}</span></h3><div class="dgrid">{{{cards}}}</div></div>
+<!-- @dcard -->
+      <article class="dcard{{wide}}" id="d-{{qid}}">
+        <header><span class="qid">{{ID}}</span><h3>{{name}}</h3><span class="rnd">R{{round}}</span>{{{seg}}}</header>
+        <div class="body">
+          <div class="fig">{{{figs}}}</div>
+          <div class="txt"><p class="line">{{line}}</p>
+            <details><summary>Reason, accepted inconvenience, compared options</summary>
+              <dl><dt>Decision (full)</dt><dd>{{adopted}}</dd><dt>Reason</dt><dd>{{reason}}</dd><dt>Accepted inconvenience</dt><dd>{{cost}}</dd><dt>Rejected</dt><dd>{{rejected}}</dd>{{{note}}}</dl>
+              <table><thead><tr><th>Option</th><th>Content</th><th>Result</th><th></th></tr></thead><tbody>{{{opts}}}</tbody></table>
+            </details></div>
+        </div>
+      </article>
+<!-- @seg -->
+<span class="seg" role="group" aria-label="Before and after of {{ID}}"><button type="button" data-ba data-v="b" aria-pressed="false">Before</button><button type="button" data-ba data-v="a" aria-pressed="true">After</button></span>
+<!-- @dfig -->
+<div class="v {{k}}{{on}}">{{{svg}}}<p class="cap{{ok}}">{{label}}{{cap}}</p></div>
+<!-- @opt -->
+<tr{{{pick}}}><td>{{key}}</td><td>{{text}}</td><td>{{res}}</td><td>{{rec}}</td></tr>
+<!-- @s4 -->
+  <section class="card" id="s4" aria-labelledby="s4t">
+    <p class="eyebrow">4 · Tasks (in dependency order, drawn from tasks.json)</p>
+    <h2 id="s4t">{{title}}</h2>
+    <div class="prog"><b><span id="p-pct">—</span>%</b><div class="bar" role="progressbar" aria-label="Progress of steps"><i id="p-bar"></i></div><span class="small">Steps <span id="p-steps">—</span></span></div>
+    <p class="lead small">Done <b id="n-done">—</b> / <span id="n-all">—</span> · in progress <span id="n-doing">—</span> · ready now <b id="n-ready">—</b> · blocked <span id="n-blocked">—</span> · dropped <span id="n-dropped">—</span></p>
+    <p class="lead small" id="par"></p>
+    <p class="live"><span id="live-dot" class="dot"></span><span id="live-txt">before reading tasks.js</span><label><input type="checkbox" id="live-on" checked> Re-read automatically</label></p>
+    <p class="openbox" id="task-err" hidden></p>
+    <h3 class="gh">Checklist<span>Open for a check per step. Finished steps are counted by steps_done</span></h3>
+    <ol id="checklist" class="checklist"></ol>
+    <h3 class="gh">Dependencies<span>Top to bottom in dependency order. Press a tag to go to its row. Thick frame: ready now. Dashed: proposal</span></h3>
+    <div class="wide-fig"><svg id="dag" viewBox="0 0 1000 100" role="img" aria-label="Task dependencies. A task below can be taken once the tasks above are done."></svg></div>
+    <details><summary>Agent procedure (for_agent in tasks.json)</summary><ol id="for-agent"></ol></details>
+    <div class="tbl"><table class="tasks"><thead><tr><th>ID</th><th>Kind</th><th>Work</th><th>Owner</th><th>From</th><th>Needs first</th><th>Done when</th><th>State</th><th>Deliverables, checked</th></tr></thead><tbody id="task-rows"></tbody></table></div>
+  </section>
+<!-- @s4-none -->
+  <section class="card" id="s4" aria-labelledby="s4t">
+    <p class="eyebrow">4 · Tasks</p>
+    <h2 id="s4t">No tasks yet</h2>
+    <p class="lead small">Put tasks.json in the same folder and rebuild to show progress, checklist, dependencies and the table here.</p>
+  </section>
+<!-- @s5 -->
+  <section class="card" id="s5" aria-labelledby="s5t">
+    <p class="eyebrow">5 · Rejected, assumptions, conditions to revisit</p>
+    <h2 id="s5t">What to revisit if wrong</h2>
+    <details><summary>Open assumptions and conditions to revisit</summary>
+      <div class="cols"><div><h4>Assumptions</h4><ul>{{{assume}}}</ul></div><div><h4>Conditions to revisit</h4><ul>{{{revisit}}}</ul></div></div>
+    </details>
+  </section>
+<!-- @s6 -->
+  <section class="card" id="s6" aria-labelledby="s6t">
+    <p class="eyebrow">6 · History</p>
+    <h2 id="s6t">{{title}}</h2>
+    <div class="wide-fig">{{{fig}}}</div>
+  </section>
+<!-- @s7 -->
+  <section class="card" id="s7" aria-labelledby="s7t">
+    <p class="eyebrow">7 · Open and held</p>
+    <h2 id="s7t">Not decided yet</h2>
+    {{{boxes}}}
+  </section>
+<!-- @openbox -->
+    <div class="openbox"><b><span class="tag open">{{state}}</span> {{ID}} {{title}}</b>
+      <dl><dt>Why undecided</dt><dd>{{reason}}</dd><dt>Recommended</dt><dd>{{rec}}</dd><dt>Needed to decide</dt><dd>{{needs}}</dd><dt>Affected tasks</dt><dd>{{tasks}}</dd></dl>
+    </div>
+<!-- @livepill -->
+  <a class="livepill" href="#s4" aria-label="Go to task progress"><span id="lp-dot" class="dot"></span><b id="lp-pct">—</b><span id="lp-done">—</span></a>

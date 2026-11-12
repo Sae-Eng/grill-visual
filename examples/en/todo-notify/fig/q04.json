@@ -1,0 +1,30 @@
+{
+  "type": "bars",
+  "width": 520,
+  "title": "Notifications on a day with 12 due items (count)",
+  "label": "Notifications received on a busy day with 12 due items. A, no limit: 12. B, up to 3 a day: the 3 urgent ones plus one evening roundup, 4 in total. C, 1 a day: just one morning roundup.",
+  "max": 18,
+  "unit": "",
+  "ticks": [0, 3, 6, 9, 12, 15, 18],
+  "rows": [
+    {
+      "label": "Individual",
+      "segs": [],
+      "layers": {
+        "A": { "segs": [{ "v": 12, "tone": "accent", "text": "12" }], "after": "People stop looking" },
+        "B": { "segs": [{ "v": 3, "tone": "accent", "text": "3" }], "after": "3 nearest due times" },
+        "C": { "segs": [], "after": "None" }
+      }
+    },
+    {
+      "label": "Roundup",
+      "segs": [],
+      "layers": {
+        "A": { "segs": [], "after": "None" },
+        "B": { "segs": [{ "v": 1, "tone": "soft", "text": "1" }], "after": "Other 9 in one message" },
+        "C": { "segs": [{ "v": 1, "tone": "soft", "text": "1" }], "after": "All 12 in one, in the morning" }
+      }
+    }
+  ],
+  "marks": [{ "v": 3, "text": "Comfortable level: 3 (estimate)" }]
+}

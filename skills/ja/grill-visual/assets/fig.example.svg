@@ -1,0 +1,54 @@
+<svg viewBox="0 0 520 262" role="img" aria-label="同じ3件の出来事が、A では1通にまとまり、B では3通に分かれて届き、C では18時まで待って1通で届く。">
+<!-- 図の断片の例（references/data.md の「図の断片」）。下絵は1回だけ描き、案で変わる所だけを <g data-layer> にする。
+     この図: 出来事の3枚・画面の枠・見出しが下絵。届き方（線・通知の札）が A・B・C の層。 -->
+<defs><marker id="fx-accent" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M1.5 1.5L8.5 5L1.5 8.5" style="fill:none;stroke:var(--accent);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"/></marker><marker id="fx-q" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M1.5 1.5L8.5 5L1.5 8.5" style="fill:none;stroke:var(--q);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"/></marker></defs>
+<!-- 下絵 -->
+<text x="20" y="28" font-size="12" font-weight="600" style="fill:var(--mute);font-family:var(--mono)">出来事（同じ3件）</text>
+<g style="fill:var(--surface);stroke:var(--ink);stroke-width:1.5">
+  <rect x="20" y="44" width="140" height="46" rx="4"/><rect x="20" y="104" width="140" height="46" rx="4"/><rect x="20" y="164" width="140" height="46" rx="4"/>
+</g>
+<text x="32" y="64" font-size="13" font-weight="700" style="fill:var(--ink)">PR のレビュー依頼</text><text x="32" y="81" font-size="12" style="fill:var(--sub)">10:02</text>
+<text x="32" y="124" font-size="13" font-weight="700" style="fill:var(--ink)">CI の失敗</text><text x="32" y="141" font-size="12" style="fill:var(--sub)">10:05</text>
+<text x="32" y="184" font-size="13" font-weight="700" style="fill:var(--ink)">コメント 1件</text><text x="32" y="201" font-size="12" style="fill:var(--sub)">10:09</text>
+<rect x="340" y="20" width="164" height="214" rx="16" style="fill:var(--surface);stroke:var(--ink);stroke-width:1.5"/>
+<rect x="398" y="28" width="48" height="6" rx="3" style="fill:var(--line)"/>
+<text x="422" y="254" font-size="12" text-anchor="middle" style="fill:var(--sub)">あなたの画面</text>
+<!-- A: 1通にまとめて届く -->
+<g data-layer="A">
+  <path d="M160 67C200 67 200 127 232 127M160 127H232M160 187C200 187 200 127 232 127" style="fill:none;stroke:var(--accent);stroke-width:1.5"/>
+  <rect x="232" y="112" width="60" height="30" rx="4" style="fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5"/>
+  <text x="262" y="132" font-size="12" font-weight="700" text-anchor="middle" style="fill:var(--ink)">まとめる</text>
+  <path d="M292 127H346" style="fill:none;stroke:var(--accent);stroke-width:1.5" marker-end="url(#fx-accent)"/>
+  <text x="318" y="119" font-size="12" text-anchor="middle" style="fill:var(--accent)">1通</text>
+  <rect x="352" y="84" width="140" height="86" rx="6" style="fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5"/>
+  <text x="364" y="106" font-size="13" font-weight="700" style="fill:var(--ink)">3件の更新</text>
+  <text x="364" y="126" font-size="12" style="fill:var(--sub)">レビュー依頼・CI 失敗</text>
+  <text x="364" y="143" font-size="12" style="fill:var(--sub)">・コメント</text>
+  <text x="364" y="160" font-size="12" style="fill:var(--mute)">10:09</text>
+</g>
+<!-- B: 1件ずつ3通届く -->
+<g data-layer="B">
+  <path d="M160 67H346M160 127H346M160 187H346" style="fill:none;stroke:var(--accent);stroke-width:1.5" marker-end="url(#fx-accent)"/>
+  <text x="252" y="60" font-size="12" text-anchor="middle" style="fill:var(--accent)">1通目</text>
+  <text x="252" y="120" font-size="12" text-anchor="middle" style="fill:var(--accent)">2通目</text>
+  <text x="252" y="180" font-size="12" text-anchor="middle" style="fill:var(--accent)">3通目</text>
+  <g style="fill:var(--surface);stroke:var(--accent);stroke-width:1.5"><rect x="352" y="46" width="140" height="42" rx="6"/><rect x="352" y="106" width="140" height="42" rx="6"/><rect x="352" y="166" width="140" height="42" rx="6"/></g>
+  <text x="364" y="72" font-size="13" font-weight="700" style="fill:var(--ink)">レビュー依頼</text>
+  <text x="364" y="132" font-size="13" font-weight="700" style="fill:var(--ink)">CI の失敗</text>
+  <text x="364" y="192" font-size="13" font-weight="700" style="fill:var(--ink)">コメント</text>
+</g>
+<!-- C: 18時まで待って1通 -->
+<g data-layer="C">
+  <path d="M160 67C190 67 190 112 214 112M160 127H214M160 187C190 187 190 142 214 142" style="fill:none;stroke:var(--q);stroke-width:1.5"/>
+  <rect x="214" y="98" width="82" height="58" rx="4" style="fill:var(--q-soft);stroke:var(--q);stroke-width:1.5"/>
+  <circle cx="232" cy="127" r="10" style="fill:var(--surface);stroke:var(--q);stroke-width:1.5"/><path d="M232 121V127H237" style="fill:none;stroke:var(--q);stroke-width:1.5"/>
+  <text x="248" y="124" font-size="12" font-weight="700" style="fill:var(--ink)">18:00</text><text x="248" y="141" font-size="12" style="fill:var(--ink)">まで待つ</text>
+  <path d="M296 186H346" style="fill:none;stroke:var(--q);stroke-width:1.5;stroke-dasharray:4 4" marker-end="url(#fx-q)"/>
+  <path d="M255 156V186H296" style="fill:none;stroke:var(--q);stroke-width:1.5;stroke-dasharray:4 4"/>
+  <text x="300" y="206" font-size="12" style="fill:var(--q)">18時に1通</text>
+  <text x="422" y="100" font-size="12" text-anchor="middle" style="fill:var(--mute)">いまは通知なし</text>
+  <rect x="352" y="164" width="140" height="44" rx="6" style="fill:var(--q-soft);stroke:var(--q);stroke-width:1.5"/>
+  <text x="364" y="184" font-size="13" font-weight="700" style="fill:var(--ink)">18:00 · 3件の更新</text>
+  <text x="364" y="200" font-size="12" style="fill:var(--sub)">まとめて1通</text>
+</g>
+</svg>

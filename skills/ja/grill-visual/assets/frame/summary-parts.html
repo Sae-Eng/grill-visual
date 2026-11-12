@@ -1,0 +1,109 @@
+<!-- grill-visual のまとめ（summary.html）のひな形。build.mjs が page.json と tasks.json から埋める。モデルは読まない・書かない。
+     章の順番（0 ヘッダー → 1 完成形 → 2 仕組み → 3 決定 → 4 タスク → 5 却下・仮定 → 6 経緯 → 7 未決）は固定（references/summary.md）。
+     書き方は parts.html と同じ（<!-- @名前 -->、{{x}} は文字、{{{x}}} は HTML）。 -->
+<!-- @head -->
+  <div class="top">
+    <div>
+      <div class="topline"><p class="eyebrow">GRILL-VISUAL · まとめ · v{{version}} · {{date}}</p><span class="theme-sw" role="group" aria-label="表示の明暗"><button type="button" data-theme-set="light" aria-pressed="true">ライト</button><button type="button" data-theme-set="dark" aria-pressed="false">ダーク</button></span></div>
+      <h1>{{title}}</h1>
+      <p class="lead">{{lead}}</p>
+    </div>
+    <div class="stats"><span class="stat"><b>{{decided}}</b>件 決定</span><span class="stat"><b>{{open}}</b>件 未決</span><span class="stat"><b id="n-task">{{tasks}}</b>件 タスク（提案<span id="n-prop">{{props}}</span>）</span><span class="stat"><b>{{rounds}}</b>ラウンド · {{asked}}問</span></div>
+  </div>
+  {{{progress}}}
+  <nav class="toc" aria-label="章">{{{toc}}}</nav>
+  {{{changes}}}
+<!-- @progress-top -->
+  <div class="prog prog-top"><b><span id="n-pct">—</span>%</b><div class="bar" role="progressbar" aria-label="タスクの手順の進み具合"><i id="t-bar"></i></div><a class="small" href="#s4">タスク <span id="t-done">—</span> 完了</a></div>
+<!-- @changes -->
+  <div class="changes"><b>前の版からの変更</b><ul>{{{items}}}</ul></div>
+<!-- @s1 -->
+  <section class="card" id="s1" aria-labelledby="s1t">
+    <p class="eyebrow">1 · 完成形</p>
+    <h2 id="s1t">{{title}}</h2>
+    <p class="lead small">{{lead}}</p>
+    <div class="wide-fig">{{{fig}}}</div>
+  </section>
+<!-- @s2 -->
+  <section class="card" id="s2" aria-labelledby="s2t">
+    <p class="eyebrow">2 · 仕組み</p>
+    <h2 id="s2t">{{title}}</h2>
+    <div class="mech">{{{panels}}}</div>
+  </section>
+<!-- @panel -->
+      <div class="panel{{full}}"><h4>{{title}}</h4><div class="{{box}}">{{{fig}}}</div>{{{player}}}</div>
+<!-- @s3 -->
+  <section class="card" id="s3" aria-labelledby="s3t">
+    <p class="eyebrow">3 · 決定（{{n}}件）</p>
+    <h2 id="s3t">決まった物の姿</h2>
+    <p class="lead small">図は「後」の姿。右上の「前」で決める前の姿に切り替わる。理由・不便・比べた案は畳んである。</p>
+    {{{groups}}}
+  </section>
+<!-- @dgroup -->
+    <div class="dgroup"><h3 class="gh">{{name}}<span>{{sub}}</span></h3><div class="dgrid">{{{cards}}}</div></div>
+<!-- @dcard -->
+      <article class="dcard{{wide}}" id="d-{{qid}}">
+        <header><span class="qid">{{ID}}</span><h3>{{name}}</h3><span class="rnd">R{{round}}</span>{{{seg}}}</header>
+        <div class="body">
+          <div class="fig">{{{figs}}}</div>
+          <div class="txt"><p class="line">{{line}}</p>
+            <details><summary>理由・引き受けた不便・比べた案</summary>
+              <dl><dt>決定（全文）</dt><dd>{{adopted}}</dd><dt>理由</dt><dd>{{reason}}</dd><dt>引き受けた不便</dt><dd>{{cost}}</dd><dt>却下</dt><dd>{{rejected}}</dd>{{{note}}}</dl>
+              <table><thead><tr><th>案</th><th>中身</th><th>結果</th><th></th></tr></thead><tbody>{{{opts}}}</tbody></table>
+            </details></div>
+        </div>
+      </article>
+<!-- @seg -->
+<span class="seg" role="group" aria-label="{{ID}} の前と後"><button type="button" data-ba data-v="b" aria-pressed="false">前</button><button type="button" data-ba data-v="a" aria-pressed="true">後</button></span>
+<!-- @dfig -->
+<div class="v {{k}}{{on}}">{{{svg}}}<p class="cap{{ok}}">{{label}}{{cap}}</p></div>
+<!-- @opt -->
+<tr{{{pick}}}><td>{{key}}</td><td>{{text}}</td><td>{{res}}</td><td>{{rec}}</td></tr>
+<!-- @s4 -->
+  <section class="card" id="s4" aria-labelledby="s4t">
+    <p class="eyebrow">4 · タスク（依存の順・tasks.json から描く）</p>
+    <h2 id="s4t">{{title}}</h2>
+    <div class="prog"><b><span id="p-pct">—</span>%</b><div class="bar" role="progressbar" aria-label="手順の進み具合"><i id="p-bar"></i></div><span class="small">手順 <span id="p-steps">—</span></span></div>
+    <p class="lead small">完了 <b id="n-done">—</b> / <span id="n-all">—</span> · 作業中 <span id="n-doing">—</span> · いま取れる <b id="n-ready">—</b>件 · 止まった <span id="n-blocked">—</span>件 · やめた <span id="n-dropped">—</span>件</p>
+    <p class="lead small" id="par"></p>
+    <p class="live"><span id="live-dot" class="dot"></span><span id="live-txt">tasks.js を読みにいく前</span><label><input type="checkbox" id="live-on" checked> 自動で読み直す</label></p>
+    <p class="openbox" id="task-err" hidden></p>
+    <h3 class="gh">チェックリスト<span>開くと手順ごとのチェック。済んだ手順は steps_done で数える</span></h3>
+    <ol id="checklist" class="checklist"></ol>
+    <h3 class="gh">依存の図<span>上から依存の順。札を押すと表の行へ。太枠はいま取れる、破線は提案</span></h3>
+    <div class="wide-fig"><svg id="dag" viewBox="0 0 1000 100" role="img" aria-label="タスクの依存。上のタスクが終わると下のタスクを取れる。"></svg></div>
+    <details><summary>エージェントの進め方（tasks.json の for_agent）</summary><ol id="for-agent"></ol></details>
+    <div class="tbl"><table class="tasks"><thead><tr><th>ID</th><th>種類</th><th>作業</th><th>担当</th><th>元の決定</th><th>前に要る</th><th>完了条件</th><th>状態</th><th>成果物・確かめた結果</th></tr></thead><tbody id="task-rows"></tbody></table></div>
+  </section>
+<!-- @s4-none -->
+  <section class="card" id="s4" aria-labelledby="s4t">
+    <p class="eyebrow">4 · タスク</p>
+    <h2 id="s4t">タスクはまだ無い</h2>
+    <p class="lead small">同じフォルダに tasks.json を置いて組み立て直すと、ここに進み具合・チェックリスト・依存の図・表が出る。</p>
+  </section>
+<!-- @s5 -->
+  <section class="card" id="s5" aria-labelledby="s5t">
+    <p class="eyebrow">5 · 却下・仮定・見直す条件</p>
+    <h2 id="s5t">外れたら見直すこと</h2>
+    <details><summary>仮定と見直す条件を開く</summary>
+      <div class="cols"><div><h4>仮定</h4><ul>{{{assume}}}</ul></div><div><h4>見直す条件</h4><ul>{{{revisit}}}</ul></div></div>
+    </details>
+  </section>
+<!-- @s6 -->
+  <section class="card" id="s6" aria-labelledby="s6t">
+    <p class="eyebrow">6 · 経緯</p>
+    <h2 id="s6t">{{title}}</h2>
+    <div class="wide-fig">{{{fig}}}</div>
+  </section>
+<!-- @s7 -->
+  <section class="card" id="s7" aria-labelledby="s7t">
+    <p class="eyebrow">7 · 未決・保留</p>
+    <h2 id="s7t">まだ決まっていないこと</h2>
+    {{{boxes}}}
+  </section>
+<!-- @openbox -->
+    <div class="openbox"><b><span class="tag open">{{state}}</span> {{ID}} {{title}}</b>
+      <dl><dt>決まらない理由</dt><dd>{{reason}}</dd><dt>推奨</dt><dd>{{rec}}</dd><dt>決めるのに要るもの</dt><dd>{{needs}}</dd><dt>影響するタスク</dt><dd>{{tasks}}</dd></dl>
+    </div>
+<!-- @livepill -->
+  <a class="livepill" href="#s4" aria-label="タスクの進み具合へ"><span id="lp-dot" class="dot"></span><b id="lp-pct">—</b><span id="lp-done">—</span></a>

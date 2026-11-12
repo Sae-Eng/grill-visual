@@ -1,0 +1,106 @@
+<!-- grill-visual の議論ページのひな形。build.mjs が page.json から埋める。モデルは読まない・書かない。
+     <!-- @名前 --> から次の @ までが1つのひな形。{{x}} は文字（エスケープする）、{{{x}}} は HTML をそのまま入れる。
+     回答欄（fieldset 以下）と札の形は skeleton の固定の決まり。変えると回答バーが読めなくなる。 -->
+<!-- @head -->
+  <div class="topline"><p class="eyebrow">GRILL-VISUAL · v{{version}} · {{date}}{{ended}}</p><span class="theme-sw" role="group" aria-label="Light or dark"><button type="button" data-theme-set="light" aria-pressed="true">Light</button><button type="button" data-theme-set="dark" aria-pressed="false">Dark</button></span></div>
+  <h1>{{title}}</h1>
+  <p class="lead">{{lead}}</p>
+  <div class="stats">
+    <span class="stat"><b>{{round}}</b> round{{rlimit}}</span>
+    <span class="stat"><b>{{asked}}</b> asked{{qlimit}}</span>
+    <span class="stat"><b>{{decided}}</b> decided</span>
+    <span class="stat"><b id="draft-n">0</b> in answer memo (unsent)</span>
+  </div>
+<!-- @section -->
+  <section class="card"{{{idattr}}} aria-labelledby="{{sid}}-t">
+    <p class="eyebrow">{{eyebrow}}</p>
+    <h2 id="{{sid}}-t">{{title}}</h2>
+    {{{lead}}}{{{figs}}}{{{note}}}{{{details}}}
+  </section>
+<!-- @question -->
+  <section class="card" id="{{qid}}" aria-labelledby="{{qid}}-t">
+    <div class="question">
+      <div class="q-head"><div><p class="eyebrow">{{ID}} · impact {{impact}} · {{undo}}{{multi}} · round {{round}}</p><h2 id="{{qid}}-t">{{title}}</h2></div>{{{badge}}}</div>
+      <div>
+        <p class="ctx"><b>Background: </b>{{background}}</p>
+        <p class="ctx"><b>Issue: </b>{{issue}}</p>
+        <div class="visual">
+          <div class="visual-top"><span>{{fig_top}}</span><span id="pv-{{qid}}" data-sfx="{{sfx}}">{{preview}}</span></div>
+          {{{views}}}{{{fig}}}{{{player}}}
+          <p class="vnote" id="note-{{qid}}">{{fig_note}}</p>
+        </div>
+        {{{details}}}
+      </div>
+      {{{answer}}}
+    </div>
+  </section>
+<!-- @answer -->
+      <fieldset data-q="{{qid}}">
+        <legend class="sr">{{ID}} {{title}}</legend>
+        {{{choices}}}
+        <p class="why">Why recommended: {{why}}</p>
+        <label class="note-label" for="n-{{qid}}">Note (optional)</label>
+        <textarea id="n-{{qid}}" data-note="{{qid}}"></textarea>
+        <button class="ghost" type="button" data-hold="{{qid}}" aria-pressed="false">Hold</button>
+      </fieldset>
+<!-- @answer-skip -->
+      <div class="skip"><p class="why">Skipped: {{skip}}</p>{{{choices}}}</div>
+<!-- @choice -->
+        <label class="choice"><input type="{{type}}" name="{{qid}}" value="{{key}}" data-label="{{name}}"><b>{{key}}：{{text}}</b>{{{rec}}}<small>{{{desc}}}<span class="pros">＋ {{pros}}</span> ／ <span class="cons">− {{cons}}</span></small></label>
+<!-- @choice-plain -->
+        <div class="choice"><b>{{key}}：{{text}}</b>{{{rec}}}<small>{{{desc}}}<span class="pros">＋ {{pros}}</span> ／ <span class="cons">− {{cons}}</span></small></div>
+<!-- @rec -->
+<span class="rec">Recommended</span>
+<!-- @badge-open -->
+<span class="badge" id="st-{{qid}}">Awaiting answer</span>
+<!-- @badge-done -->
+<span class="badge done" id="st-{{qid}}" data-decided="1">Decided ({{pick}})</span>
+<!-- @badge-skip -->
+<span class="badge" id="st-{{qid}}" data-decided="1">Skipped</span>
+<!-- @done-group -->
+  <section class="card" id="done-qs" aria-labelledby="done-t">
+    <p class="eyebrow">DECIDED · folded</p>
+    <h2 id="done-t">Decided and skipped ({{n}})</h2>
+    <p class="lead small">Folded here to keep them apart from the questions to answer now. Open one to see its diagram and options; choosing again puts it in the answer memo.</p>
+    {{{rows}}}
+  </section>
+<!-- @done-q -->
+    <details class="done-q"><summary><b>{{ID}}</b> {{title}} <span class="badge{{done}}">{{state}}</span></summary>
+{{{card}}}
+    </details>
+<!-- @notes-all -->
+  <section class="card" aria-labelledby="all-t">
+    <h2 id="all-t">Overall note</h2>
+    <p class="lead small">Write opinions outside the issues, extra requests, or "explain {{first}} more".</p>
+    <textarea id="n-all" data-note="all" style="min-height:70px;margin-top:8px"></textarea>
+  </section>
+<!-- @end -->
+  <section class="card" aria-labelledby="end-t">
+    <p class="eyebrow">END</p>
+    <h2 id="end-t">The discussion has ended</h2>
+    <p class="lead">{{text}} <a href="summary.html">summary.html</a></p>
+  </section>
+<!-- @views -->
+          <div class="views-row"><span class="label">Options</span><span class="views" role="group" aria-label="View options of {{ID}}" data-views="{{qid}}">{{{buttons}}}</span></div>
+<!-- @view-btn -->
+<button type="button" data-v="{{key}}" aria-pressed="{{on}}">{{key}}</button>
+<!-- @player -->
+          <div class="step" data-player="{{qid}}" data-caps="{{caps}}"><button type="button" data-st="-1">◀ Prev</button><button type="button" data-st="1">Next ▶</button><button type="button" data-play>Play</button><span data-n>1 / {{n}}</span></div>
+          <p class="vnote" data-cap="{{qid}}">{{cap}}</p>
+<!-- @decisions -->
+  <section class="card" aria-labelledby="log-t">
+    <p class="eyebrow">DECISIONS · BEFORE → AFTER</p>
+    <h2 id="log-t">What the decisions change ({{n}})</h2>
+    <p class="lead small">{{lead}}</p>
+    {{{rows}}}
+  </section>
+<!-- @decision-round -->
+    <p class="eyebrow ba-round">Decided in round {{round}}</p>
+<!-- @decision -->
+    <article class="ba-row" id="d-{{qid}}">
+      <h3><a href="#{{qid}}">{{ID}}</a> {{line}} <span class="badge done" data-decided="1">Decided ({{pick}})</span></h3>
+      <div class="ba-two">{{{figs}}}</div>
+      <details><summary>Reason, accepted inconvenience, rejected options{{more}}</summary><dl class="ba-dl"><dt>Decision (full)</dt><dd>{{adopted}}</dd><dt>Reason</dt><dd>{{reason}}</dd><dt>Accepted inconvenience</dt><dd>{{cost}}</dd><dt>Rejected</dt><dd>{{rejected}}</dd>{{{note}}}</dl></details>
+    </article>
+<!-- @ba-fig -->
+        <figure class="ba-{{k}}"><figcaption>{{label}}</figcaption>{{{svg}}}<p class="cap{{ok}}">{{cap}}</p></figure>

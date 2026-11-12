@@ -1,0 +1,598 @@
+<!doctype html>
+<html lang="ja" data-direction="blueprint" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ToDo アプリに、うるさくない通知を付ける · まとめ</title>
+<!-- grill-visual の build.mjs が page.json と fig/ から組み立てた。手で直さず、page.json か図の断片を直して組み立て直す -->
+<style>
+/* html-foundation の tokens.css — 変数だけ(references/02-look.md・04-parts.md)。
+   既定(書体・文字の段・余白と線と角)は、どの方向でも同じ値。
+   色は <html data-direction="blueprint|instrument|paper"> で方向の組を切り替える。無ければ blueprint。
+   ダークは OS の設定に従う。<html data-theme="light|dark"> を付けると、そちらを優先する。
+   ページの <style> の頭に中身ごと貼る。題材に合わせて --accent などを上書きしてよい(02-look.md「色の決め方」)。
+   自分の部品を持つ作り手(grill-visual など)は、これだけを貼り、部品をこの変数で描く。 */
+
+/* ---------- 既定: 書体・文字の段・余白と線と角 ---------- */
+:root{
+  --font:"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",system-ui,sans-serif;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  --fs:15px;--fs-s:13px;--fs-label:12px;--fs-h3:17px;--fs-h2:20px;--fs-h1:26px;
+  --lh:1.7;--lh-s:1.5;--lh-h:1.4;
+  --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:24px;--s6:32px;--s7:48px;
+  --r:4px;--r-chip:3px;--rule:1.5px;--hit:44px;
+  --measure:40em;--page:1080px;
+  --fig-min:940px; /* 絵の最小幅。viewBox の幅 1000・文字 12 なら、表示で 11px 以上を保つ */
+}
+
+/* ---------- 方向の組: 設計図とレビュー票(blueprint・既定) ---------- */
+:root{
+  --bg:#ffffff;--surface:#ffffff;--paper:#f6f7f9;
+  --ink:#16191d;--sub:#5b636d;--mute:#6b727c;--line:#e1e4e8;--line2:#eef0f3;--frame:#9aa1ab;--stroke:#c9ced6;
+  --accent:#2747c0;--accent-soft:#e8ecfb;--on-accent:#ffffff;
+  --q:#8a6100;--q-soft:#faf0d4;--ok:#1f7a4d;--ok-soft:#e4f2ea;--ng:#c4312b;--ng-soft:#fbeceb;
+  --grid:rgba(39,71,192,.07);--focus:#ffd43d;
+}
+/* ---------- 計器盤(instrument): 状態・数・比べ ---------- */
+:root[data-direction="instrument"]{
+  --bg:#f3f4f6;--surface:#ffffff;--paper:#eceef1;
+  --ink:#14171a;--sub:#555d66;--mute:#68707a;--line:#dde1e6;--line2:#eceef1;--frame:#98a0aa;--stroke:#c6ccd4;
+  --accent:#0e7490;--accent-soft:#e0f1f5;--on-accent:#ffffff;
+  --grid:transparent;
+}
+/* ---------- 紙の資料(paper): 読み物・手順書。地は白に近い灰(生成りにしない) ---------- */
+:root[data-direction="paper"]{
+  --bg:#fcfcfc;--surface:#ffffff;--paper:#f4f5f6;
+  --ink:#1b1d20;--sub:#575c63;--mute:#6a7078;--line:#e3e5e8;--line2:#f0f1f3;--frame:#9ca1a8;--stroke:#cbcfd4;
+  --accent:#1f4e79;--accent-soft:#e6eef6;--on-accent:#ffffff;
+  --grid:transparent;--measure:36em;
+}
+
+/* ---------- ダーク: 地は暗く(#111417)、面は地より少し明るくして浮かせる。本文と地は 15.9:1。
+   色は鮮やかさを抑えた淡い色のまま(鮮やかな色を暗い地に置くとチカチカする)。地は方向で変えず、強調の色だけ変える ---------- */
+:root[data-theme="dark"]{
+  --bg:#111417;--surface:#1a1e23;--paper:#1d2126;
+  --ink:#eceef1;--sub:#b9c0c8;--mute:#8e959e;--line:#2a2f36;--line2:#20242a;--frame:#737a84;--stroke:#3a3f46;
+  --accent:#9fb0ec;--accent-soft:#2b303d;--on-accent:#111417;
+  --q:#d4b06a;--q-soft:#343026;--ok:#82c095;--ok-soft:#25332e;--ng:#e88a85;--ng-soft:#38292b;
+  --grid:rgba(159,176,236,.05);--focus:#c9a43a;
+}
+:root[data-theme="dark"][data-direction="instrument"]{--accent:#67c3d8;--accent-soft:#20343a;--grid:transparent}
+:root[data-theme="dark"][data-direction="paper"]{--accent:#8fb3d9;--accent-soft:#28313a;--grid:transparent}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#111417;--surface:#1a1e23;--paper:#1d2126;
+    --ink:#eceef1;--sub:#b9c0c8;--mute:#8e959e;--line:#2a2f36;--line2:#20242a;--frame:#737a84;--stroke:#3a3f46;
+    --accent:#9fb0ec;--accent-soft:#2b303d;--on-accent:#111417;
+    --q:#d4b06a;--q-soft:#343026;--ok:#82c095;--ok-soft:#25332e;--ng:#e88a85;--ng-soft:#38292b;
+    --grid:rgba(159,176,236,.05);--focus:#c9a43a;
+  }
+  :root[data-direction="instrument"]:not([data-theme="light"]){--accent:#67c3d8;--accent-soft:#20343a;--grid:transparent}
+  :root[data-direction="paper"]:not([data-theme="light"]){--accent:#8fb3d9;--accent-soft:#28313a;--grid:transparent}
+}
+
+/* 入力欄とスクロールバーの明暗も合わせる */
+html{color-scheme:light dark}
+:root[data-theme="light"]{color-scheme:light}
+:root[data-theme="dark"]{color-scheme:dark}
+
+/* grill-visual のまとめの CSS。build.mjs が tokens.css の後に差し込む */
+/* 骨格の名前を、土台の変数に読み替える。未決は「だめ」の色（--ng）で示す */
+:root{--card:var(--surface);--warn:var(--q);--warn-soft:var(--q-soft);--open:var(--ng);--open-soft:var(--ng-soft)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:var(--fs)/var(--lh) var(--font)}
+main{max-width:1180px;margin:0 auto;padding:28px 24px 64px}
+h1,h2,h3,h4{line-height:var(--lh-h)}
+h1{font-size:var(--fs-h1);margin:0 0 6px;text-wrap:balance}h2{font-size:var(--fs-h2);margin:0 0 6px}h3{font-size:var(--fs);margin:0}
+h4{font-size:var(--fs-s);margin:0 0 8px;color:var(--sub)}
+a{color:var(--accent)}
+.lead{color:var(--sub);margin:0}.small{font-size:var(--fs-s)}
+.eyebrow{font:600 var(--fs-label)/1.4 var(--mono);color:var(--mute);margin:0 0 6px}
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
+.stats{display:flex;gap:8px;flex-wrap:wrap}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:4px 12px;font-size:var(--fs-label);color:var(--sub)}
+.stat b{color:var(--ink);font:700 15px var(--mono);margin-right:4px}
+.toc{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;font-size:var(--fs-label)}
+.toc a{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:2px 10px;text-decoration:none;color:var(--sub)}
+.toc a:hover{border-color:var(--ink);color:var(--ink)}
+.card{border-top:var(--rule) solid var(--ink);padding-top:var(--s3);margin-top:var(--s7)}
+.changes{background:var(--warn-soft);border:1px solid var(--warn);border-radius:var(--r);padding:10px 16px;margin-top:14px;font-size:var(--fs-s);color:var(--ink)}
+.changes ul{margin:4px 0 0;padding-left:18px}
+svg{display:block;width:100%;height:auto}svg text{font-family:inherit}
+.wide-fig{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background-color:var(--surface);background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:16px 16px}
+.wide-fig svg{min-width:min(940px,var(--vbw,940px))}
+svg[style*="--vbw"]{max-width:var(--vbw);margin-inline:auto}
+/* 1 の図に載せる決定の札。<a class="chip" href="#d-q01"><rect …/><text …>Q01</text></a> */
+.chip rect{fill:var(--ok-soft);stroke:var(--ok)}.chip text{fill:var(--ok);font-weight:600}
+.chip.open rect{fill:var(--open-soft);stroke:var(--open)}.chip.open text{fill:var(--open)}
+.chip:hover rect,.chip:focus rect{fill:var(--ok)}.chip:hover text,.chip:focus text{fill:var(--on-accent)}
+.tnode:hover rect{stroke-width:2.5}
+.mech{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:14px}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:14px;min-width:0}
+.panel.full{grid-column:1/-1}
+.player{display:flex;gap:6px;align-items:center;margin-top:8px;font-size:var(--fs-label);color:var(--sub);flex-wrap:wrap}
+.player button{font:inherit;font-size:var(--fs-label);border:1px solid var(--frame);background:var(--card);color:var(--ink);border-radius:var(--r);padding:4px 12px;cursor:pointer}
+.player button:focus-visible,.seg button:focus-visible{outline:2px solid var(--ink);outline-offset:2px;box-shadow:0 0 0 5px var(--focus)}
+.caption{font-size:var(--fs-s);background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:8px 12px;margin-top:8px;min-height:42px}
+.st{opacity:.18;transition:opacity .2s}.st.on{opacity:1}
+@media (prefers-reduced-motion:reduce){.st{transition:none}}
+.dgroup{margin-top:16px}.gh{font-size:var(--fs-s);color:var(--sub);margin:0 0 8px}.gh span{font-weight:400;color:var(--mute);margin-left:6px}
+.dgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;grid-auto-flow:dense}
+.dcard{border:1px solid var(--line);border-radius:var(--r);padding:12px;background:var(--card);display:flex;flex-direction:column;gap:6px;scroll-margin-top:16px}
+.dcard.wide{grid-column:span 2}
+.dcard.wide .body{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start}
+.dcard:target{outline:2px solid var(--accent);outline-offset:2px}
+.dcard header{display:flex;align-items:center;gap:8px}
+.qid{font:600 var(--fs-label) var(--mono);color:var(--ok);background:var(--ok-soft);border-radius:var(--r-chip);padding:1px 6px}
+.rnd{font:600 var(--fs-label) var(--mono);color:var(--mute)}
+.seg{margin-left:auto;display:inline-flex}
+.seg button{font:inherit;font-size:var(--fs-label);border:1px solid var(--frame);background:var(--card);padding:1px 10px;color:var(--sub);cursor:pointer}
+.seg button:first-child{border-radius:var(--r) 0 0 var(--r)}.seg button:last-child{border-radius:0 var(--r) var(--r) 0;margin-left:-1px}
+.seg button[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent);color:var(--ink);position:relative}
+.fig .v{display:none}.fig .v.on{display:block}
+.cap{margin:2px 0 0;font-size:var(--fs-label);line-height:1.4;color:var(--sub);text-align:center}.cap.ok{color:var(--ok)}
+.txt{display:flex;flex-direction:column;gap:6px;margin-top:4px}
+.line{margin:0;font-size:var(--fs-s);font-weight:600}
+details{font-size:var(--fs-s);color:var(--sub)}summary{cursor:pointer;font-size:var(--fs-s);color:var(--ink)}
+details dl{display:grid;grid-template-columns:7em minmax(0,1fr);gap:2px 10px;margin:8px 0}
+details dt{color:var(--mute)}details dd{margin:0}
+table{border-collapse:collapse;width:100%;font-size:var(--fs-s);line-height:var(--lh-s)}
+th,td{border-bottom:1px solid var(--line);padding:4px 8px;text-align:left;vertical-align:top}
+th{font:600 var(--fs-label)/1.4 var(--mono);color:var(--mute);border-bottom:var(--rule) solid var(--ink)}
+tr.pick td{background:var(--ok-soft);color:var(--ok);font-weight:600}
+.tbl{overflow-x:auto;margin-top:12px}
+.tasks td.tid{font:600 var(--fs-label) var(--mono);color:var(--ok);white-space:nowrap}
+.tasks tr.prop td.tid{color:var(--warn)}
+.tasks tr:target td{background:var(--accent-soft)}
+.tasks td:nth-child(4),.tasks td:nth-child(5),.tasks td:nth-child(7){white-space:nowrap}
+.tag{display:inline-block;font-size:var(--fs-label);border-radius:var(--r-chip);padding:0 6px;border:1px solid var(--line);white-space:nowrap}
+.tag.done{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
+.tag.prop{background:var(--warn-soft);border-color:var(--warn);color:var(--warn)}
+.tag.open{background:var(--open-soft);border-color:var(--open);color:var(--open)}
+.cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:10px}
+.cols ul{margin:0;padding-left:18px;font-size:var(--fs-s)}
+.openbox{border:1px dashed var(--open);background:var(--open-soft);border-radius:var(--r);padding:12px 16px;font-size:var(--fs-s)}
+.openbox dl{display:grid;grid-template-columns:9em minmax(0,1fr);gap:2px 12px;margin:6px 0 0}.openbox dt{color:var(--sub)}.openbox dd{margin:0}
+@media (max-width:960px){.dgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:720px){.dgrid,.mech,.cols,.dcard.wide .body{grid-template-columns:1fr}.dcard.wide{grid-column:auto}}
+/* 明暗の切り替え。既定はライト（html の data-theme="light"）。OS の設定には従わせない */
+.topline{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.theme-sw{display:inline-flex}
+.theme-sw button{font:inherit;font-size:var(--fs-label);border:1px solid var(--frame);background:var(--card);color:var(--sub);padding:2px 10px;cursor:pointer}
+.theme-sw button:first-child{border-radius:var(--r) 0 0 var(--r)}.theme-sw button:last-child{border-radius:0 var(--r) var(--r) 0;margin-left:-1px}
+.theme-sw button[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent);color:var(--ink);position:relative}
+.theme-sw button:focus-visible{outline:2px solid var(--ink);outline-offset:2px;box-shadow:0 0 0 5px var(--focus)}
+/* build.mjs のまとめの部品。決定の図は 520 幅なので2列にする（3列では図の文字が小さすぎる） */
+.dgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.lead,.line,details p,.cols li{max-width:var(--measure)}
+.panel .fig-box svg{min-width:0}
+.step{display:flex;gap:8px;align-items:center;margin-top:8px;font-size:var(--fs-label);color:var(--sub);flex-wrap:wrap}
+.step button{font:inherit;font-size:var(--fs-label);border:1px solid var(--frame);background:var(--card);color:var(--ink);border-radius:var(--r);padding:4px 12px;min-height:32px;cursor:pointer}
+.step button:focus-visible{outline:2px solid var(--ink);outline-offset:2px;box-shadow:0 0 0 5px var(--focus)}
+.vnote{font-size:var(--fs-s);line-height:var(--lh-s);color:var(--sub);margin:8px 0 0}
+/* 4 タスク: 表・進み具合・自動の読み直し・チェックリスト */
+.tasks ol{margin:4px 0;padding-left:18px}.tasks p{margin:2px 0}.tasks td small{color:var(--mute);font-size:var(--fs-label)}
+.tasks td:nth-child(3){min-width:16em}.tasks td:nth-child(7){min-width:14em}.tasks td:nth-child(8){white-space:nowrap}.tasks td:nth-child(9){min-width:8em}
+.tasks td:nth-child(4),.tasks td:nth-child(5),.tasks td:nth-child(6){white-space:nowrap}
+#for-agent{font-size:var(--fs-s);color:var(--ink);padding-left:20px}#for-agent li{max-width:var(--measure)}
+#task-err{color:var(--ink)}
+.prog{display:flex;align-items:center;gap:12px;margin:12px 0 4px}
+.prog>b{font:700 var(--fs-h2)/1 var(--mono);color:var(--ok);min-width:3.2em}
+.prog .bar{flex:1;height:12px;border:1px solid var(--frame);border-radius:6px;background:var(--paper);overflow:hidden}
+.prog .bar i{display:block;height:100%;width:0;background:var(--ok);transition:width .5s}
+.prog-top{max-width:560px}
+.live{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:4px 0 8px;font-size:var(--fs-label);color:var(--mute)}
+.live label{display:inline-flex;align-items:center;gap:4px;margin-left:auto;color:var(--sub);cursor:pointer}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--frame);flex:none}
+.dot.ok{background:var(--ok);box-shadow:0 0 0 3px var(--ok-soft)}
+.checklist{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 14px;margin:8px 0 14px;padding:0;list-style:none;align-items:start}
+.checklist>li>details{border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+.checklist>li.doing>details{border-color:var(--accent)}
+.checklist>li.blocked>details{border-color:var(--ng)}
+.checklist>li.prop>details{border-style:dashed}
+.checklist summary{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto;gap:4px 8px;align-items:center;padding:7px 10px;cursor:pointer;list-style:none}
+.checklist summary::-webkit-details-marker{display:none}
+.checklist .cl-st{grid-column:3/5;font-size:var(--fs-label);color:var(--mute)}
+.checklist li.doing .cl-st{color:var(--accent)}
+.checklist li.blocked .cl-st{color:var(--ng)}
+.checklist li.done .cl-t{color:var(--mute)}
+.cl-id{font:600 var(--fs-label) var(--mono);color:var(--mute)}
+.cl-t{font-size:var(--fs-s);font-weight:700;min-width:0}
+.cl-t small,.cl-steps small{font-weight:400;color:var(--mute);font-size:var(--fs-label)}
+.cl-n{font:var(--fs-label) var(--mono);color:var(--mute)}
+.ck{display:inline-grid;place-items:center;width:16px;height:16px;border:1.5px solid var(--frame);border-radius:3px;font:700 12px/1 var(--mono);color:var(--surface);flex:none;background:var(--surface)}
+.ck.on{background:var(--ok);border-color:var(--ok)}
+.ck.now{border:2px solid var(--accent);background:var(--accent-soft)}
+.ck.ng{border-color:var(--ng);color:var(--ng)}
+.ck.off{border-style:dashed;color:var(--mute)}.checklist li.dropped .cl-t{color:var(--mute);text-decoration:line-through}.checklist>li.dropped>details{border-style:dashed}
+.cl-steps{margin:0;padding:2px 12px 10px;list-style:none;border-top:1px solid var(--line)}
+.cl-steps li{display:flex;gap:8px;align-items:flex-start;font-size:var(--fs-s);padding:4px 0;max-width:38em}
+.cl-steps .ck{margin-top:3px}
+.cl-proof{margin:0;padding:0 12px 10px;font-size:var(--fs-label);color:var(--sub)}
+.livepill{position:fixed;right:16px;bottom:16px;z-index:5;display:flex;align-items:center;gap:8px;padding:6px 12px;border:1px solid var(--frame);border-radius:999px;background:var(--surface);color:var(--ink);font:var(--fs-label) var(--mono);text-decoration:none}
+.livepill b{font-size:var(--fs-s);color:var(--ok)}
+#s4 .gh{margin-top:18px}
+@media (max-width:720px){.dgrid,.checklist{grid-template-columns:1fr}.live label{margin-left:0}}
+
+/* 層とコマ（build.mjs が断片から書く） */
+svg[data-view] [data-layer]{display:none}
+svg[data-view~="N"] [data-layer~="N"]{display:inline}
+svg[data-view~="A"] [data-layer~="A"]{display:inline}
+svg[data-view~="B"] [data-layer~="B"]{display:inline}
+svg[data-view~="C"] [data-layer~="C"]{display:inline}
+svg[data-at] [data-frame]{display:none}
+svg[data-at] [data-step]{opacity:.18;transition:opacity .2s}
+@media (prefers-reduced-motion:reduce){svg[data-at] [data-step]{transition:none}}
+svg[data-at="1"] [data-frame="1"]{display:inline}
+svg[data-at="1"] [data-step="1"]{opacity:1}
+svg[data-at="2"] [data-frame="2"]{display:inline}
+svg[data-at="2"] [data-step="1"],svg[data-at="2"] [data-step="2"]{opacity:1}
+svg[data-at="3"] [data-frame="3"]{display:inline}
+svg[data-at="3"] [data-step="1"],svg[data-at="3"] [data-step="2"],svg[data-at="3"] [data-step="3"]{opacity:1}
+svg[data-at="4"] [data-frame="4"]{display:inline}
+svg[data-at="4"] [data-step="1"],svg[data-at="4"] [data-step="2"],svg[data-at="4"] [data-step="3"],svg[data-at="4"] [data-step="4"]{opacity:1}
+svg[data-at="5"] [data-frame="5"]{display:inline}
+svg[data-at="5"] [data-step="1"],svg[data-at="5"] [data-step="2"],svg[data-at="5"] [data-step="3"],svg[data-at="5"] [data-step="4"],svg[data-at="5"] [data-step="5"]{opacity:1}
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <div>
+      <div class="topline"><p class="eyebrow">GRILL-VISUAL · まとめ · v3 · 2026-11-12</p><span class="theme-sw" role="group" aria-label="表示の明暗"><button type="button" data-theme-set="light" aria-pressed="true">ライト</button><button type="button" data-theme-set="dark" aria-pressed="false">ダーク</button></span></div>
+      <h1>ToDo アプリは、期限の1時間前に端末の通知を送り、数と夜の時間でうるささを抑える</h1>
+      <p class="lead">期限を付けた人には、1時間前にロック中の画面へ通知が届き、通知から「完了」を押せます。1件ずつ鳴るのは1日3件までで、夜は鳴りません。</p>
+    </div>
+    <div class="stats"><span class="stat"><b>6</b>件 決定</span><span class="stat"><b>0</b>件 未決</span><span class="stat"><b id="n-task">6</b>件 タスク（提案<span id="n-prop">0</span>）</span><span class="stat"><b>2</b>ラウンド · 6問</span></div>
+  </div>
+    <div class="prog prog-top"><b><span id="n-pct">—</span>%</b><div class="bar" role="progressbar" aria-label="タスクの手順の進み具合"><i id="t-bar"></i></div><a class="small" href="#s4">タスク <span id="t-done">—</span> 完了</a></div>
+  <nav class="toc" aria-label="章"><a href="#s1">1 完成形の図</a><a href="#s2">2 仕組みの図</a><a href="#s3">3 決定</a><a href="#s4">4 タスク</a><a href="#s5">5 却下・仮定</a><a href="#s6">6 経緯</a><a href="index.html">議論ページ</a><a href="discussion.md">記録</a><a href="tasks.json">tasks.json</a></nav>
+  
+  <section class="card" id="s1" aria-labelledby="s1t">
+    <p class="eyebrow">1 · 完成形</p>
+    <h2 id="s1t">決めた後の通知</h2>
+    <p class="lead small">緑の札が決めた問い。押すと、その決定の図と理由へ飛ぶ。</p>
+    <div class="wide-fig"><svg viewBox="0 0 1000 410" role="img" aria-label="決めた後の通知。左は電話のロック中の画面に出る札で、牛乳を買う 18時まで あと1時間、完了と1時間後のボタン。中央は期限が多い日の鳴り方で、期限の1時間前に近い順に3件まで鳴り、残りは21時30分に1通にまとめ、22時から7時は鳴らさない。右は許可を聞く場面で、初めて期限を付けたときに通知を許可するか聞く。" style="--vbw:1000px"><g><rect x="20" y="20" width="280" height="370" rx="4" style="stroke:var(--ink);fill:none;stroke-width:1;stroke-dasharray:5 4"/><text x="30" y="38" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--mute);font-family:var(--mono)">画面に出る札</text></g><rect x="50" y="46" width="200" height="320" rx="20" style="fill:var(--surface);stroke:var(--ink);stroke-width:1.5"/><rect x="130" y="56" width="40" height="5" rx="2.5" style="fill:var(--line)"/><text x="150" y="118" font-size="34" font-weight="700" text-anchor="middle" style="fill:var(--ink)">17:00</text><text x="150" y="142" font-size="12" font-weight="400" text-anchor="middle" style="fill:var(--sub)">11月12日 木曜</text><rect x="62" y="172" width="176" height="112" rx="10" style="fill:var(--paper);stroke:var(--frame)"/><text x="74" y="192" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--mute);font-family:var(--mono)">ToDo · 今</text><text x="74" y="214" font-size="14" font-weight="700" text-anchor="start" style="fill:var(--ink)">牛乳を買う</text><text x="74" y="234" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">18:00 まで（あと1時間）</text><rect x="74" y="246" width="64" height="28" rx="6" style="fill:var(--accent)"/><text x="106" y="265" font-size="12" font-weight="700" text-anchor="middle" style="fill:var(--on-accent)">完了</text><rect x="146" y="246" width="80" height="28" rx="6" style="fill:var(--surface);stroke:var(--ink)"/><text x="186" y="265" font-size="12" font-weight="700" text-anchor="middle" style="fill:var(--ink)">1時間後</text><a class="chip" href="#d-q01"><rect x="62" y="300" width="38" height="20" rx="3"/><text x="81" y="314" font-size="12" text-anchor="middle">Q01</text></a><a class="chip" href="#d-q05"><rect x="106" y="300" width="38" height="20" rx="3"/><text x="125" y="314" font-size="12" text-anchor="middle">Q05</text></a><g><rect x="320" y="20" width="460" height="370" rx="4" style="stroke:var(--ink);fill:none;stroke-width:1;stroke-dasharray:5 4"/><text x="330" y="38" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--mute);font-family:var(--mono)">一日の鳴り方（期限が多い日）</text></g><rect x="360" y="110" width="122.5" height="50" style="fill:var(--paper);stroke:var(--mute);stroke-width:1"/><rect x="745" y="110" width="35" height="50" style="fill:var(--paper);stroke:var(--mute);stroke-width:1"/><text x="421.25" y="140" font-size="12" font-weight="400" text-anchor="middle" style="fill:var(--mute)">静か</text><text x="762.5" y="140" font-size="12" font-weight="400" text-anchor="middle" style="fill:var(--mute)">静か</text><path d="M360 160 H780" style="stroke:var(--ink);stroke-width:1.5"/><text x="360" y="182" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">0時</text><text x="465" y="182" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">6時</text><text x="570" y="182" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">12時</text><text x="675" y="182" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">18時</text><text x="780" y="182" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">24時</text><circle cx="552.5" cy="92" r="8" style="fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5"/><path d="M552.5 100 V158" style="stroke:var(--accent);stroke-width:1.5;stroke-dasharray:3 3"/><circle cx="657.5" cy="92" r="8" style="fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5"/><path d="M657.5 100 V158" style="stroke:var(--accent);stroke-width:1.5;stroke-dasharray:3 3"/><circle cx="692.5" cy="92" r="8" style="fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5"/><path d="M692.5 100 V158" style="stroke:var(--accent);stroke-width:1.5;stroke-dasharray:3 3"/><text x="552.5" y="72" font-size="12" font-weight="700" text-anchor="middle" style="fill:var(--accent)">1時間前に、近い順に3件まで</text><rect x="727.25" y="83" width="18" height="18" rx="3" style="fill:var(--surface);stroke:var(--accent);stroke-width:1.5"/><path d="M736.25 101 V158" style="stroke:var(--accent);stroke-width:1.5;stroke-dasharray:3 3"/><text x="766.25" y="50" font-size="12" font-weight="700" text-anchor="end" style="fill:var(--ink)">21:30 残りをまとめて1通</text><a class="chip" href="#d-q02"><rect x="340" y="200" width="38" height="20" rx="3"/><text x="359" y="214" font-size="12" text-anchor="middle">Q02</text></a><a class="chip" href="#d-q04"><rect x="384" y="200" width="38" height="20" rx="3"/><text x="403" y="214" font-size="12" text-anchor="middle">Q04</text></a><a class="chip" href="#d-q06"><rect x="428" y="200" width="38" height="20" rx="3"/><text x="447" y="214" font-size="12" text-anchor="middle">Q06</text></a><text x="340" y="250" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">・期限の1時間前に鳴る</text><text x="340" y="267.4" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">・1日に1件ずつ鳴るのは3件まで。残りは21:30 に1通</text><text x="340" y="284.8" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">・22時〜7時は鳴らさない。その間の期限は前倒し</text><text x="340" y="302.2" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">・通知から「完了」「1時間後」を押せる</text><g><rect x="800" y="20" width="180" height="370" rx="4" style="stroke:var(--frame);fill:none;stroke-width:1;stroke-dasharray:5 4"/><text x="810" y="38" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--mute);font-family:var(--mono)">許可を聞く場面</text></g><rect x="820" y="56" width="140" height="196" rx="16" style="fill:var(--surface);stroke:var(--ink);stroke-width:1.5"/><text x="834" y="96" font-size="13" font-weight="700" text-anchor="start" style="fill:var(--ink)">牛乳を買う</text><rect x="834" y="106" width="112" height="22" rx="4" style="fill:var(--accent-soft);stroke:var(--accent)"/><text x="842" y="122" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--accent);font-family:var(--mono)">期限 18:00</text><rect x="830" y="146" width="120" height="78" rx="8" style="fill:var(--paper);stroke:var(--ink);stroke-width:1.5"/><text x="890" y="170" font-size="12" font-weight="700" text-anchor="middle" style="fill:var(--ink)">通知を許可？</text><text x="858" y="210" font-size="12" font-weight="400" text-anchor="middle" style="fill:var(--sub)">しない</text><text x="922" y="210" font-size="12" font-weight="700" text-anchor="middle" style="fill:var(--accent)">許可</text><text x="820" y="284" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">初めて期限を</text><text x="820" y="301.4" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">付けたときに聞く</text><a class="chip" href="#d-q03"><rect x="820" y="330" width="38" height="20" rx="3"/><text x="839" y="344" font-size="12" text-anchor="middle">Q03</text></a></svg></div>
+  </section>
+  <section class="card" id="s2" aria-labelledby="s2t">
+    <p class="eyebrow">2 · 仕組み</p>
+    <h2 id="s2t">1件の期限が通知になるまで・届く数</h2>
+    <div class="mech">      <div class="panel full"><h4>1件の期限が通知になるまで</h4><div class="wide-fig"><svg id="svg-m1" data-at="1" data-frames="5" viewBox="0 0 1000 200" role="img" aria-label="1件の期限が通知になるまでの5段。1 期限を付ける。初めてなら許可を聞く。2 鳴らす時刻を期限の1時間前にする。3 22時から7時なら21時30分に前倒し。4 今日3件目までは1件ずつ、4件目からまとめへ。5 完了と1時間後のボタン付きで通知を出す。" style="--vbw:1000px"><defs><marker id="sf-ink" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M1.5 1.5L8.5 5L1.5 8.5" style="fill:none;stroke:var(--ink);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"/></marker><marker id="sf-mute" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M1.5 1.5L8.5 5L1.5 8.5" style="fill:none;stroke:var(--mute);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"/></marker><marker id="sf-accent" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M1.5 1.5L8.5 5L1.5 8.5" style="fill:none;stroke:var(--accent);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"/></marker><marker id="sf-ok" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M1.5 1.5L8.5 5L1.5 8.5" style="fill:none;stroke:var(--ok);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"/></marker><marker id="sf-ng" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M1.5 1.5L8.5 5L1.5 8.5" style="fill:none;stroke:var(--ng);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"/></marker></defs><g data-step="1"><rect x="20" y="30" width="176" height="150" rx="4" style="fill:var(--surface);stroke:var(--frame);stroke-width:1"/><text x="32" y="52" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--mute);font-family:var(--mono)">1</text><text x="50" y="52" font-size="13" font-weight="700" text-anchor="start" style="fill:var(--ink)">期限を付ける</text><text x="32" y="88" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">初めてなら</text><text x="32" y="105.4" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">許可を聞く</text><text x="32" y="164" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--mute);font-family:var(--mono)">Q03</text><path d="M197 105 H214" style="stroke:var(--ink);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round" marker-end="url(#sf-ink)"/></g><g data-step="2"><rect x="216" y="30" width="176" height="150" rx="4" style="fill:var(--surface);stroke:var(--frame);stroke-width:1"/><text x="228" y="52" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--mute);font-family:var(--mono)">2</text><text x="246" y="52" font-size="13" font-weight="700" text-anchor="start" style="fill:var(--ink)">1時間前を出す</text><text x="228" y="88" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">鳴らす時刻＝</text><text x="228" y="105.4" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">期限 − 1時間</text><text x="228" y="164" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--mute);font-family:var(--mono)">Q02</text><path d="M393 105 H410" style="stroke:var(--ink);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round" marker-end="url(#sf-ink)"/></g><g data-step="3"><rect x="412" y="30" width="176" height="150" rx="4" style="fill:var(--surface);stroke:var(--frame);stroke-width:1"/><text x="424" y="52" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--mute);font-family:var(--mono)">3</text><text x="442" y="52" font-size="13" font-weight="700" text-anchor="start" style="fill:var(--ink)">静かな時間か</text><text x="424" y="88" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">22時〜7時なら</text><text x="424" y="105.4" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">21:30 に前倒し</text><text x="424" y="164" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--mute);font-family:var(--mono)">Q06</text><path d="M589 105 H606" style="stroke:var(--ink);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round" marker-end="url(#sf-ink)"/></g><g data-step="4"><rect x="608" y="30" width="176" height="150" rx="4" style="fill:var(--surface);stroke:var(--frame);stroke-width:1"/><text x="620" y="52" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--mute);font-family:var(--mono)">4</text><text x="638" y="52" font-size="13" font-weight="700" text-anchor="start" style="fill:var(--ink)">今日の数を見る</text><text x="620" y="88" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">3件目までは1件で</text><text x="620" y="105.4" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">4件目からまとめへ</text><text x="620" y="164" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--mute);font-family:var(--mono)">Q04</text><path d="M785 105 H802" style="stroke:var(--ink);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round" marker-end="url(#sf-ink)"/></g><g data-step="5"><rect x="804" y="30" width="176" height="150" rx="4" style="fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5"/><text x="816" y="52" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--mute);font-family:var(--mono)">5</text><text x="834" y="52" font-size="13" font-weight="700" text-anchor="start" style="fill:var(--ink)">通知を出す</text><text x="816" y="88" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">「完了」</text><text x="816" y="105.4" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">「1時間後」付き</text><text x="816" y="164" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--mute);font-family:var(--mono)">Q05</text></g></svg></div>          <div class="step" data-player="m1" data-caps="[&quot;期限を付ける。初めてなら、ここで許可を聞く（Q03）。&quot;,&quot;鳴らす時刻を、期限の1時間前にする（Q02）。&quot;,&quot;22時〜7時に入るなら、21:30 に前倒しする（Q06）。&quot;,&quot;今日の3件目までは1件で、4件目からは夜のまとめに回す（Q04）。&quot;,&quot;「完了」「1時間後」のボタン付きで通知を出す（Q01・Q05）。&quot;]"><button type="button" data-st="-1">◀ 前へ</button><button type="button" data-st="1">次へ ▶</button><button type="button" data-play>再生</button><span data-n>1 / 5</span></div>
+          <p class="vnote" data-cap="m1">期限を付ける。初めてなら、ここで許可を聞く（Q03）。</p></div>
+      <div class="panel full"><h4>期限が12件ある日に届く数</h4><div class="wide-fig"><svg id="svg-m2" viewBox="0 0 1000 184" role="img" aria-label="期限が12件ある日に届く通知の数。前は0件。決めた後は1件ずつの通知が3件とまとめが1件で4件。上限を付けなかった場合は12件。" style="--vbw:1000px"><text x="20" y="20" font-size="12" fill="var(--mute)" style="font-family:var(--mono)">期限が12件ある日に届く通知（件）。前と、決めた後と、上限を付けなかった場合</text><text x="20" y="58" font-size="13" font-weight="700" fill="var(--ink)">前（通知なし）</text><text x="135" y="58" font-size="12" fill="var(--ink)">0件。開くまで気づかない</text><text x="20" y="96" font-size="13" font-weight="700" fill="var(--ink)">決めた後</text><rect x="127" y="78" width="142.2" height="26" fill="var(--accent)" stroke="var(--accent)" stroke-width="1.5"/><text x="135" y="96" font-size="12" fill="var(--paper)">1件ずつ 3</text><rect x="269.2" y="78" width="47.4" height="26" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5"/><text x="277.2" y="96" font-size="12" fill="var(--ink)">1</text><text x="324.6" y="96" font-size="12" fill="var(--ink)">4件（3件＋まとめ1通）</text><text x="20" y="134" font-size="13" font-weight="700" fill="var(--ink)">上限なしなら</text><rect x="127" y="116" width="568.7" height="26" fill="var(--paper)" stroke="var(--mute)" stroke-dasharray="3 3" stroke-width="1.5"/><text x="135" y="134" font-size="12" fill="var(--ink)">12</text><text x="703.7" y="134" font-size="12" fill="var(--ink)">12件（推定）</text><text x="127" y="166" font-size="12" text-anchor="middle" fill="var(--mute)" style="font-family:var(--mono)">0</text><text x="269.2" y="166" font-size="12" text-anchor="middle" fill="var(--mute)" style="font-family:var(--mono)">3</text><text x="411.3" y="166" font-size="12" text-anchor="middle" fill="var(--mute)" style="font-family:var(--mono)">6</text><text x="553.5" y="166" font-size="12" text-anchor="middle" fill="var(--mute)" style="font-family:var(--mono)">9</text><text x="695.7" y="166" font-size="12" text-anchor="middle" fill="var(--mute)" style="font-family:var(--mono)">12</text><text x="837.8" y="166" font-size="12" text-anchor="middle" fill="var(--mute)" style="font-family:var(--mono)">15</text><text x="980" y="166" font-size="12" text-anchor="end" fill="var(--mute)" style="font-family:var(--mono)">18件</text></svg></div></div></div>
+  </section>
+  <section class="card" id="s3" aria-labelledby="s3t">
+    <p class="eyebrow">3 · 決定（6件）</p>
+    <h2 id="s3t">決まった物の姿</h2>
+    <p class="lead small">図は「後」の姿。右上の「前」で決める前の姿に切り替わる。理由・不便・比べた案は畳んである。</p>
+        <div class="dgroup"><h3 class="gh">出し方<span>どこに・いつ・何ができるか</span></h3><div class="dgrid">      <article class="dcard wide" id="d-q01">
+        <header><span class="qid">Q01</span><h3>通知をどこに出すか</h3><span class="rnd">R1</span><span class="seg" role="group" aria-label="Q01 の前と後"><button type="button" data-ba data-v="b" aria-pressed="false">前</button><button type="button" data-ba data-v="a" aria-pressed="true">後</button></span></header>
+        <div class="body">
+          <div class="fig"><div class="v a on"><svg data-view="B" viewBox="0 0 520 290" role="img" aria-label="後：ロック中の画面に札が出る" style="--vbw:520px"><rect x="30" y="24" width="170" height="250" rx="18" style="fill:var(--surface);stroke:var(--ink);stroke-width:1.5"/><rect x="95" y="33" width="40" height="5" rx="2.5" style="fill:var(--line)"/><text x="234" y="56" font-size="13" font-weight="700" text-anchor="start" style="fill:var(--ink)">閉じているとき、気づけるか</text><text x="234" y="96" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">アプリを開いたとき</text><text x="234" y="136" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">ロック中の画面を見たとき</text><text x="234" y="176" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">メールを開いたとき</text><g data-layer="B"><text x="115" y="92" font-size="30" font-weight="700" text-anchor="middle" style="fill:var(--ink)">17:00</text><text x="115" y="114" font-size="12" font-weight="400" text-anchor="middle" style="fill:var(--sub)">11月12日 木曜</text><rect x="42" y="146" width="146" height="62" rx="8" style="fill:var(--paper);stroke:var(--frame)"/><text x="52" y="164" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--mute);font-family:var(--mono)">ToDo · 今</text><text x="52" y="184" font-size="13" font-weight="700" text-anchor="start" style="fill:var(--ink)">牛乳を買う</text><text x="52" y="200" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">18:00 まで</text><g><rect x="436" y="81" width="70" height="21" rx="3" style="stroke:var(--ok);fill:var(--surface);stroke-width:1"/><text x="471" y="95" font-size="12" font-weight="700" text-anchor="middle" style="fill:var(--ok)">気づける</text></g><g><rect x="436" y="121" width="70" height="21" rx="3" style="stroke:var(--ok);fill:var(--surface);stroke-width:1"/><text x="471" y="135" font-size="12" font-weight="700" text-anchor="middle" style="fill:var(--ok)">気づける</text></g><g><rect x="436" y="161" width="70" height="21" rx="3" style="stroke:var(--mute);fill:var(--surface);stroke-width:1"/><text x="471" y="175" font-size="12" font-weight="700" text-anchor="middle" style="fill:var(--mute)">気づけない</text></g><text x="234" y="230" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">画面を見れば気づく。</text><text x="234" y="247.4" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">最初に許可が要る（Q03）</text></g></svg><p class="cap ok">後：ロック中の画面に札が出る</p></div><div class="v b"><svg data-view="N" viewBox="0 0 520 290" role="img" aria-label="前：開くまで気づかない" style="--vbw:520px"><rect x="30" y="24" width="170" height="250" rx="18" style="fill:var(--surface);stroke:var(--ink);stroke-width:1.5"/><rect x="95" y="33" width="40" height="5" rx="2.5" style="fill:var(--line)"/><text x="234" y="56" font-size="13" font-weight="700" text-anchor="start" style="fill:var(--ink)">閉じているとき、気づけるか</text><text x="234" y="96" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">アプリを開いたとき</text><text x="234" y="136" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">ロック中の画面を見たとき</text><text x="234" y="176" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">メールを開いたとき</text><g data-layer="N"><text x="115" y="92" font-size="30" font-weight="700" text-anchor="middle" style="fill:var(--ink)">17:00</text><text x="115" y="114" font-size="12" font-weight="400" text-anchor="middle" style="fill:var(--sub)">11月12日 木曜</text><g><rect x="436" y="81" width="70" height="21" rx="3" style="stroke:var(--mute);fill:var(--surface);stroke-width:1"/><text x="471" y="95" font-size="12" font-weight="700" text-anchor="middle" style="fill:var(--mute)">気づけない</text></g><g><rect x="436" y="121" width="70" height="21" rx="3" style="stroke:var(--mute);fill:var(--surface);stroke-width:1"/><text x="471" y="135" font-size="12" font-weight="700" text-anchor="middle" style="fill:var(--mute)">気づけない</text></g><g><rect x="436" y="161" width="70" height="21" rx="3" style="stroke:var(--mute);fill:var(--surface);stroke-width:1"/><text x="471" y="175" font-size="12" font-weight="700" text-anchor="middle" style="fill:var(--mute)">気づけない</text></g><text x="234" y="236" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">今は何も知らせない</text></g></svg><p class="cap">前：開くまで気づかない</p></div></div>
+          <div class="txt"><p class="line">端末の通知を送る</p>
+            <details><summary>理由・引き受けた不便・比べた案</summary>
+              <dl><dt>決定（全文）</dt><dd>ロック中の画面にも出る、端末の通知を送る。</dd><dt>理由</dt><dd>閉じているときにも気づけるのは B だけ（推奨どおり）。</dd><dt>引き受けた不便</dt><dd>許可が要る（Q03）。多いとうるさい（Q04・Q06 で抑える）。</dd><dt>却下</dt><dd>A アプリの中の札・C 朝のメール</dd></dl>
+              <table><thead><tr><th>案</th><th>中身</th><th>結果</th><th></th></tr></thead><tbody><tr><td>A</td><td>アプリを開いたときに「期限が近い」の札を出す</td><td>—</td><td></td></tr><tr class="pick"><td>B</td><td>ロック中の画面にも出る、端末の通知を送る</td><td>選んだ</td><td>推奨</td></tr><tr><td>C</td><td>毎朝7時に、その日の ToDo をメールで1通送る</td><td>—</td><td></td></tr></tbody></table>
+            </details></div>
+        </div>
+      </article>
+      <article class="dcard" id="d-q02">
+        <header><span class="qid">Q02</span><h3>いつ知らせるか</h3><span class="rnd">R1</span><span class="seg" role="group" aria-label="Q02 の前と後"><button type="button" data-ba data-v="b" aria-pressed="false">前</button><button type="button" data-ba data-v="a" aria-pressed="true">後</button></span></header>
+        <div class="body">
+          <div class="fig"><div class="v a on"><svg data-view="B" viewBox="0 0 520 260" role="img" aria-label="後：期限の1時間前に鳴る" style="--vbw:520px"><text x="140" y="58" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">6時</text><path d="M140 66 V220" style="stroke:var(--line);stroke-width:1;stroke-dasharray:2 4"/><text x="195.5" y="58" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">9時</text><path d="M195.5 66 V220" style="stroke:var(--line);stroke-width:1;stroke-dasharray:2 4"/><text x="251" y="58" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">12時</text><path d="M251 66 V220" style="stroke:var(--line);stroke-width:1;stroke-dasharray:2 4"/><text x="306.5" y="58" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">15時</text><path d="M306.5 66 V220" style="stroke:var(--line);stroke-width:1;stroke-dasharray:2 4"/><text x="362" y="58" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">18時</text><path d="M362 66 V220" style="stroke:var(--line);stroke-width:1;stroke-dasharray:2 4"/><text x="417.5" y="58" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">21時</text><path d="M417.5 66 V220" style="stroke:var(--line);stroke-width:1;stroke-dasharray:2 4"/><text x="473" y="58" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">24時</text><path d="M473 66 V220" style="stroke:var(--line);stroke-width:1;stroke-dasharray:2 4"/><text x="20" y="108" font-size="13" font-weight="400" text-anchor="start" style="fill:var(--ink)">歯医者を予約</text><path d="M140 104 H473" style="stroke:var(--frame);stroke-width:1.5"/><rect x="246" y="99" width="10" height="10" style="fill:var(--ink)"/><text x="20" y="158" font-size="13" font-weight="400" text-anchor="start" style="fill:var(--ink)">牛乳を買う</text><path d="M140 154 H473" style="stroke:var(--frame);stroke-width:1.5"/><rect x="357" y="149" width="10" height="10" style="fill:var(--ink)"/><text x="20" y="208" font-size="13" font-weight="400" text-anchor="start" style="fill:var(--ink)">請求書を払う</text><path d="M140 204 H473" style="stroke:var(--frame);stroke-width:1.5"/><rect x="449.5" y="199" width="10" height="10" style="fill:var(--ink)"/><rect x="20" y="236" width="10" height="10" style="fill:var(--ink)"/><text x="36" y="245" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">期限</text><circle cx="86" cy="241" r="6" style="fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5"/><text x="98" y="245" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">通知が鳴る</text><g data-layer="B"><circle cx="232.5" cy="86" r="7" style="fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5"/><path d="M232.5 93 V99" style="stroke:var(--accent);stroke-width:1.5"/><circle cx="343.5" cy="136" r="7" style="fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5"/><path d="M343.5 143 V149" style="stroke:var(--accent);stroke-width:1.5"/><circle cx="436" cy="186" r="7" style="fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5"/><path d="M436 193 V199" style="stroke:var(--accent);stroke-width:1.5"/><text x="200" y="245" font-size="12" font-weight="700" text-anchor="start" style="fill:var(--ink)">1時間前。間に合うように動ける</text></g></svg><p class="cap ok">後：期限の1時間前に鳴る</p></div><div class="v b"><svg data-view="N" viewBox="0 0 520 260" role="img" aria-label="前：鳴らない" style="--vbw:520px"><text x="140" y="58" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">6時</text><path d="M140 66 V220" style="stroke:var(--line);stroke-width:1;stroke-dasharray:2 4"/><text x="195.5" y="58" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">9時</text><path d="M195.5 66 V220" style="stroke:var(--line);stroke-width:1;stroke-dasharray:2 4"/><text x="251" y="58" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">12時</text><path d="M251 66 V220" style="stroke:var(--line);stroke-width:1;stroke-dasharray:2 4"/><text x="306.5" y="58" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">15時</text><path d="M306.5 66 V220" style="stroke:var(--line);stroke-width:1;stroke-dasharray:2 4"/><text x="362" y="58" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">18時</text><path d="M362 66 V220" style="stroke:var(--line);stroke-width:1;stroke-dasharray:2 4"/><text x="417.5" y="58" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">21時</text><path d="M417.5 66 V220" style="stroke:var(--line);stroke-width:1;stroke-dasharray:2 4"/><text x="473" y="58" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">24時</text><path d="M473 66 V220" style="stroke:var(--line);stroke-width:1;stroke-dasharray:2 4"/><text x="20" y="108" font-size="13" font-weight="400" text-anchor="start" style="fill:var(--ink)">歯医者を予約</text><path d="M140 104 H473" style="stroke:var(--frame);stroke-width:1.5"/><rect x="246" y="99" width="10" height="10" style="fill:var(--ink)"/><text x="20" y="158" font-size="13" font-weight="400" text-anchor="start" style="fill:var(--ink)">牛乳を買う</text><path d="M140 154 H473" style="stroke:var(--frame);stroke-width:1.5"/><rect x="357" y="149" width="10" height="10" style="fill:var(--ink)"/><text x="20" y="208" font-size="13" font-weight="400" text-anchor="start" style="fill:var(--ink)">請求書を払う</text><path d="M140 204 H473" style="stroke:var(--frame);stroke-width:1.5"/><rect x="449.5" y="199" width="10" height="10" style="fill:var(--ink)"/><rect x="20" y="236" width="10" height="10" style="fill:var(--ink)"/><text x="36" y="245" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">期限</text><circle cx="86" cy="241" r="6" style="fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5"/><text x="98" y="245" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">通知が鳴る</text><g data-layer="N"><text x="200" y="245" font-size="12" font-weight="700" text-anchor="start" style="fill:var(--ink)">今は鳴らない</text></g></svg><p class="cap">前：鳴らない</p></div></div>
+          <div class="txt"><p class="line">期限の1時間前に知らせる</p>
+            <details><summary>理由・引き受けた不便・比べた案</summary>
+              <dl><dt>決定（全文）</dt><dd>期限の1時間前に知らせる。</dd><dt>理由</dt><dd>知った時に動ける（推奨どおり）。</dd><dt>引き受けた不便</dt><dd>1時間で足りない用事もある。後で前の時間を選べるようにできる。</dd><dt>却下</dt><dd>A 期限ちょうど・C 朝9時にまとめ</dd></dl>
+              <table><thead><tr><th>案</th><th>中身</th><th>結果</th><th></th></tr></thead><tbody><tr><td>A</td><td>期限の時刻ちょうどに知らせる</td><td>—</td><td></td></tr><tr class="pick"><td>B</td><td>期限の1時間前に知らせる</td><td>選んだ</td><td>推奨</td></tr><tr><td>C</td><td>朝9時に、その日の期限をまとめて1回知らせる</td><td>—</td><td></td></tr></tbody></table>
+            </details></div>
+        </div>
+      </article>
+      <article class="dcard" id="d-q05">
+        <header><span class="qid">Q05</span><h3>通知から、何ができるようにするか</h3><span class="rnd">R2</span><span class="seg" role="group" aria-label="Q05 の前と後"><button type="button" data-ba data-v="b" aria-pressed="false">前</button><button type="button" data-ba data-v="a" aria-pressed="true">後</button></span></header>
+        <div class="body">
+          <div class="fig"><div class="v a on"><svg data-view="B" viewBox="0 0 520 266" role="img" aria-label="後：押して1手" style="--vbw:520px"><rect x="20" y="24" width="480" height="128" rx="12" style="fill:var(--paper);stroke:var(--frame);stroke-width:1.5"/><text x="36" y="46" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--mute);font-family:var(--mono)">ToDo · 今</text><text x="36" y="72" font-size="16" font-weight="700" text-anchor="start" style="fill:var(--ink)">牛乳を買う</text><text x="36" y="94" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">18:00 まで（あと1時間）</text><text x="20" y="184" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">終えるまでの手数</text><g data-layer="B"><rect x="250" y="108" width="100" height="32" rx="6" style="fill:var(--accent);stroke:var(--accent);stroke-width:1.2"/><text x="300" y="129" font-size="13" font-weight="700" text-anchor="middle" style="fill:var(--on-accent)">完了</text><rect x="360" y="108" width="128" height="32" rx="6" style="fill:var(--surface);stroke:var(--ink);stroke-width:1.2"/><text x="424" y="129" font-size="13" font-weight="700" text-anchor="middle" style="fill:var(--ink)">1時間後にもう一度</text></g><g data-layer="B"><g><rect x="20" y="196" width="112" height="21" rx="3" style="stroke:var(--ok);fill:var(--surface);stroke-width:1"/><text x="76" y="210" font-size="12" font-weight="700" text-anchor="middle" style="fill:var(--ok)">「完了」を押す</text></g><text x="20" y="250" font-size="12" font-weight="700" text-anchor="start" style="fill:var(--ink)">1手。アプリを開かずに済む</text></g></svg><p class="cap ok">後：押して1手</p></div><div class="v b"><svg data-view="A" viewBox="0 0 520 266" role="img" aria-label="前：開いて探して3手" style="--vbw:520px"><rect x="20" y="24" width="480" height="128" rx="12" style="fill:var(--paper);stroke:var(--frame);stroke-width:1.5"/><text x="36" y="46" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--mute);font-family:var(--mono)">ToDo · 今</text><text x="36" y="72" font-size="16" font-weight="700" text-anchor="start" style="fill:var(--ink)">牛乳を買う</text><text x="36" y="94" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">18:00 まで（あと1時間）</text><text x="20" y="184" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">終えるまでの手数</text><g data-layer="A"><text x="36" y="130" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--mute)">押すとアプリが開く</text></g><g data-layer="A"><g><rect x="20" y="196" width="112" height="21" rx="3" style="stroke:var(--ink);fill:var(--surface);stroke-width:1"/><text x="76" y="210" font-size="12" font-weight="700" text-anchor="middle" style="fill:var(--ink)">札を押す</text></g><path d="M134 206 H142" style="stroke:var(--ink);stroke-width:1.5"/><g><rect x="144" y="196" width="112" height="21" rx="3" style="stroke:var(--ink);fill:var(--surface);stroke-width:1"/><text x="200" y="210" font-size="12" font-weight="700" text-anchor="middle" style="fill:var(--ink)">アプリで探す</text></g><path d="M258 206 H266" style="stroke:var(--ink);stroke-width:1.5"/><g><rect x="268" y="196" width="112" height="21" rx="3" style="stroke:var(--ok);fill:var(--surface);stroke-width:1"/><text x="324" y="210" font-size="12" font-weight="700" text-anchor="middle" style="fill:var(--ok)">印を付ける</text></g><text x="20" y="250" font-size="12" font-weight="700" text-anchor="start" style="fill:var(--ink)">3手。開いたついでに別の物を見て、忘れる</text></g></svg><p class="cap">前：開いて探して3手</p></div></div>
+          <div class="txt"><p class="line">通知に「完了」と「1時間後」のボタン</p>
+            <details><summary>理由・引き受けた不便・比べた案</summary>
+              <dl><dt>決定（全文）</dt><dd>通知の札に「完了」と「1時間後にもう一度」の2つのボタンを付ける。</dd><dt>理由</dt><dd>1手で終わる（推奨どおり）。</dd><dt>引き受けた不便</dt><dd>ボタンの文言と動きを端末ごとに確かめる。</dd><dt>却下</dt><dd>A 開くだけ・C 返信で期限を変える</dd></dl>
+              <table><thead><tr><th>案</th><th>中身</th><th>結果</th><th></th></tr></thead><tbody><tr><td>A</td><td>押すとアプリが開く</td><td>—</td><td></td></tr><tr class="pick"><td>B</td><td>「完了」と「1時間後にもう一度」のボタンを付ける</td><td>選んだ</td><td>推奨</td></tr><tr><td>C</td><td>返信の欄に「明日の朝」などと打つと期限が変わる</td><td>—</td><td></td></tr></tbody></table>
+            </details></div>
+        </div>
+      </article></div></div>
+    <div class="dgroup"><h3 class="gh">使い始め<span>許可を聞く場面</span></h3><div class="dgrid">      <article class="dcard" id="d-q03">
+        <header><span class="qid">Q03</span><h3>通知の許可を、いつ聞くか</h3><span class="rnd">R1</span><span class="seg" role="group" aria-label="Q03 の前と後"><button type="button" data-ba data-v="b" aria-pressed="false">前</button><button type="button" data-ba data-v="a" aria-pressed="true">後</button></span></header>
+        <div class="body">
+          <div class="fig"><div class="v a on"><svg data-view="B" data-at="3" data-frames="3" viewBox="0 0 520 280" role="img" aria-label="後：期限を付けた直後に聞く" style="--vbw:520px"><g data-step="1"><rect x="20" y="20" width="140" height="196" rx="16" style="fill:var(--surface);stroke:var(--ink);stroke-width:1.5"/><rect x="70" y="28" width="40" height="5" rx="2.5" style="fill:var(--line)"/><text x="90" y="74" font-size="14" font-weight="700" text-anchor="middle" style="fill:var(--ink)">ようこそ</text><path d="M40 196H140" style="stroke:var(--stroke);fill:none;stroke-width:2;stroke-linecap:round"/><path d="M40 206H140" style="stroke:var(--stroke);fill:none;stroke-width:2;stroke-linecap:round"/><text x="24" y="236" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--ink);font-family:var(--mono)">1 初めて開く</text></g><g data-step="2"><rect x="190" y="20" width="140" height="196" rx="16" style="fill:var(--surface);stroke:var(--ink);stroke-width:1.5"/><rect x="240" y="28" width="40" height="5" rx="2.5" style="fill:var(--line)"/><text x="204" y="62" font-size="13" font-weight="700" text-anchor="start" style="fill:var(--ink)">牛乳を買う</text><rect x="204" y="72" width="112" height="22" rx="4" style="fill:var(--accent-soft);stroke:var(--accent)"/><text x="212" y="88" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--accent);font-family:var(--mono)">期限 18:00</text><text x="194" y="236" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--ink);font-family:var(--mono)">2 期限を付ける</text></g><g data-step="3"><rect x="360" y="20" width="140" height="196" rx="16" style="fill:var(--surface);stroke:var(--ink);stroke-width:1.5"/><rect x="410" y="28" width="40" height="5" rx="2.5" style="fill:var(--line)"/><text x="430" y="70" font-size="22" font-weight="700" text-anchor="middle" style="fill:var(--ink)">17:00</text><text x="364" y="236" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--ink);font-family:var(--mono)">3 期限の1時間前</text></g><g data-layer="B"><g data-step="2"><rect x="200" y="96" width="120" height="78" rx="8" style="fill:var(--paper);stroke:var(--ink);stroke-width:1.5"/><text x="260" y="120" font-size="12" font-weight="700" text-anchor="middle" style="fill:var(--ink)">通知を許可？</text><path d="M200 138 H320" style="stroke:var(--line)"/><text x="228" y="162" font-size="12" font-weight="400" text-anchor="middle" style="fill:var(--sub)">しない</text><text x="292" y="162" font-size="12" font-weight="700" text-anchor="middle" style="fill:var(--accent)">許可</text></g><g data-step="3"><rect x="370" y="108" width="120" height="48" rx="8" style="fill:var(--paper);stroke:var(--frame)"/><text x="380" y="128" font-size="12" font-weight="700" text-anchor="start" style="fill:var(--ink)">牛乳を買う</text><text x="380" y="146" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">18:00 まで</text></g><text x="20" y="266" font-size="12" font-weight="700" text-anchor="start" style="fill:var(--ink)">期限を付けた直後に聞く。理由が伝わる</text></g></svg><p class="cap ok">後：期限を付けた直後に聞く</p></div><div class="v b"><svg data-view="C" data-at="3" data-frames="3" viewBox="0 0 520 280" role="img" aria-label="前：許可を聞く場面が無い" style="--vbw:520px"><g data-step="1"><rect x="20" y="20" width="140" height="196" rx="16" style="fill:var(--surface);stroke:var(--ink);stroke-width:1.5"/><rect x="70" y="28" width="40" height="5" rx="2.5" style="fill:var(--line)"/><text x="90" y="74" font-size="14" font-weight="700" text-anchor="middle" style="fill:var(--ink)">ようこそ</text><path d="M40 196H140" style="stroke:var(--stroke);fill:none;stroke-width:2;stroke-linecap:round"/><path d="M40 206H140" style="stroke:var(--stroke);fill:none;stroke-width:2;stroke-linecap:round"/><text x="24" y="236" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--ink);font-family:var(--mono)">1 初めて開く</text></g><g data-step="2"><rect x="190" y="20" width="140" height="196" rx="16" style="fill:var(--surface);stroke:var(--ink);stroke-width:1.5"/><rect x="240" y="28" width="40" height="5" rx="2.5" style="fill:var(--line)"/><text x="204" y="62" font-size="13" font-weight="700" text-anchor="start" style="fill:var(--ink)">牛乳を買う</text><rect x="204" y="72" width="112" height="22" rx="4" style="fill:var(--accent-soft);stroke:var(--accent)"/><text x="212" y="88" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--accent);font-family:var(--mono)">期限 18:00</text><text x="194" y="236" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--ink);font-family:var(--mono)">2 期限を付ける</text></g><g data-step="3"><rect x="360" y="20" width="140" height="196" rx="16" style="fill:var(--surface);stroke:var(--ink);stroke-width:1.5"/><rect x="410" y="28" width="40" height="5" rx="2.5" style="fill:var(--line)"/><text x="430" y="70" font-size="22" font-weight="700" text-anchor="middle" style="fill:var(--ink)">17:00</text><text x="364" y="236" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--ink);font-family:var(--mono)">3 期限の1時間前</text></g><g data-layer="C"><g data-step="3"><text x="430" y="136" font-size="13" font-weight="700" text-anchor="middle" style="fill:var(--mute)">届かない</text></g><text x="20" y="266" font-size="12" font-weight="700" text-anchor="start" style="fill:var(--ink)">聞かない。設定を開いた人にしか届かない</text></g></svg><p class="cap">前：許可を聞く場面が無い</p></div></div>
+          <div class="txt"><p class="line">許可は、初めて期限を付けたときに聞く</p>
+            <details><summary>理由・引き受けた不便・比べた案</summary>
+              <dl><dt>決定（全文）</dt><dd>初めて期限を付けた直後に、通知の許可を聞く。</dd><dt>理由</dt><dd>その場で理由が伝わる（推奨どおり）。</dd><dt>引き受けた不便</dt><dd>期限を付けない人には聞かない。</dd><dt>却下</dt><dd>A 初めて開いたとき・C 設定画面だけ</dd></dl>
+              <table><thead><tr><th>案</th><th>中身</th><th>結果</th><th></th></tr></thead><tbody><tr><td>A</td><td>アプリを初めて開いた瞬間に許可を聞く</td><td>—</td><td></td></tr><tr class="pick"><td>B</td><td>初めて期限を付けた直後に許可を聞く</td><td>選んだ</td><td>推奨</td></tr><tr><td>C</td><td>許可の窓は出さず、設定画面に「通知をオン」を置く</td><td>—</td><td></td></tr></tbody></table>
+            </details></div>
+        </div>
+      </article></div></div>
+    <div class="dgroup"><h3 class="gh">うるさくしない<span>数と夜の時間</span></h3><div class="dgrid">      <article class="dcard" id="d-q04">
+        <header><span class="qid">Q04</span><h3>1日に出す通知の上限</h3><span class="rnd">R2</span><span class="seg" role="group" aria-label="Q04 の前と後"><button type="button" data-ba data-v="b" aria-pressed="false">前</button><button type="button" data-ba data-v="a" aria-pressed="true">後</button></span></header>
+        <div class="body">
+          <div class="fig"><div class="v a on"><svg data-view="B" viewBox="0 0 520 170" role="img" aria-label="後：3件＋まとめ1通" style="--vbw:520px"><text x="20" y="20" font-size="12" fill="var(--mute)" style="font-family:var(--mono)">期限が12件ある日に、届く通知（件）</text><text x="20" y="58" font-size="13" font-weight="700" fill="var(--ink)">1件ずつの通知</text><g data-layer="B"><rect x="121.5" y="40" width="63.1" height="26" fill="var(--accent)" stroke="var(--accent)" stroke-width="1.5"/><text x="129.5" y="58" font-size="12" fill="var(--paper)">3</text><text x="192.6" y="58" font-size="12" font-weight="700" fill="var(--accent)">期限の近い順に3件</text></g><text x="20" y="96" font-size="13" font-weight="700" fill="var(--ink)">まとめの通知</text><g data-layer="B"><rect x="121.5" y="78" width="21" height="26" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5"/><text x="129.5" y="96" font-size="12" fill="var(--ink)">1</text><text x="150.6" y="96" font-size="12" font-weight="700" fill="var(--accent)">残り9件を1通に</text></g><path d="M184.6 34 V110" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 3"/><text x="184.6" y="126" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent)">気にならない目安 3件（推定）</text><text x="121.5" y="152" font-size="12" text-anchor="middle" fill="var(--mute)" style="font-family:var(--mono)">0</text><text x="184.6" y="152" font-size="12" text-anchor="middle" fill="var(--mute)" style="font-family:var(--mono)">3</text><text x="247.7" y="152" font-size="12" text-anchor="middle" fill="var(--mute)" style="font-family:var(--mono)">6</text><text x="310.8" y="152" font-size="12" text-anchor="middle" fill="var(--mute)" style="font-family:var(--mono)">9</text><text x="373.8" y="152" font-size="12" text-anchor="middle" fill="var(--mute)" style="font-family:var(--mono)">12</text><text x="436.9" y="152" font-size="12" text-anchor="middle" fill="var(--mute)" style="font-family:var(--mono)">15</text><text x="500" y="152" font-size="12" text-anchor="end" fill="var(--mute)" style="font-family:var(--mono)">18件</text></svg><p class="cap ok">後：3件＋まとめ1通</p></div><div class="v b"><svg data-view="A" viewBox="0 0 520 170" role="img" aria-label="前：上限なしなら12件" style="--vbw:520px"><text x="20" y="20" font-size="12" fill="var(--mute)" style="font-family:var(--mono)">期限が12件ある日に、届く通知（件）</text><text x="20" y="58" font-size="13" font-weight="700" fill="var(--ink)">1件ずつの通知</text><g data-layer="A"><rect x="121.5" y="40" width="252.3" height="26" fill="var(--accent)" stroke="var(--accent)" stroke-width="1.5"/><text x="129.5" y="58" font-size="12" fill="var(--paper)">12</text><text x="381.8" y="58" font-size="12" font-weight="700" fill="var(--accent)">見なくなる</text></g><text x="20" y="96" font-size="13" font-weight="700" fill="var(--ink)">まとめの通知</text><g data-layer="A"><text x="129.5" y="96" font-size="12" font-weight="700" fill="var(--accent)">なし</text></g><path d="M184.6 34 V110" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 3"/><text x="184.6" y="126" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent)">気にならない目安 3件（推定）</text><text x="121.5" y="152" font-size="12" text-anchor="middle" fill="var(--mute)" style="font-family:var(--mono)">0</text><text x="184.6" y="152" font-size="12" text-anchor="middle" fill="var(--mute)" style="font-family:var(--mono)">3</text><text x="247.7" y="152" font-size="12" text-anchor="middle" fill="var(--mute)" style="font-family:var(--mono)">6</text><text x="310.8" y="152" font-size="12" text-anchor="middle" fill="var(--mute)" style="font-family:var(--mono)">9</text><text x="373.8" y="152" font-size="12" text-anchor="middle" fill="var(--mute)" style="font-family:var(--mono)">12</text><text x="436.9" y="152" font-size="12" text-anchor="middle" fill="var(--mute)" style="font-family:var(--mono)">15</text><text x="500" y="152" font-size="12" text-anchor="end" fill="var(--mute)" style="font-family:var(--mono)">18件</text></svg><p class="cap">前：上限なしなら12件</p></div></div>
+          <div class="txt"><p class="line">1件ずつは1日3件まで。残りは夜に1通</p>
+            <details><summary>理由・引き受けた不便・比べた案</summary>
+              <dl><dt>決定（全文）</dt><dd>1件ずつの通知は、期限の近い順に1日3件まで。残りは 21:30 に1通でまとめる。</dd><dt>理由</dt><dd>急ぎは届き、多い日も静か（推奨どおり）。</dd><dt>引き受けた不便</dt><dd>4件目以降は1時間前に鳴らない。</dd><dt>却下</dt><dd>A 上限なし・C 1日1件</dd></dl>
+              <table><thead><tr><th>案</th><th>中身</th><th>結果</th><th></th></tr></thead><tbody><tr><td>A</td><td>期限の数だけ、1件ずつ知らせる</td><td>—</td><td></td></tr><tr class="pick"><td>B</td><td>1件ずつは期限の近い順に3件まで。残りは夜に1通でまとめる</td><td>選んだ</td><td>推奨</td></tr><tr><td>C</td><td>朝に1通だけ、まとめて知らせる</td><td>—</td><td></td></tr></tbody></table>
+            </details></div>
+        </div>
+      </article>
+      <article class="dcard" id="d-q06">
+        <header><span class="qid">Q06</span><h3>夜の静かな時間を作るか</h3><span class="rnd">R2</span><span class="seg" role="group" aria-label="Q06 の前と後"><button type="button" data-ba data-v="b" aria-pressed="false">前</button><button type="button" data-ba data-v="a" aria-pressed="true">後</button></span></header>
+        <div class="body">
+          <div class="fig"><div class="v a on"><svg data-view="B" viewBox="0 0 520 250" role="img" aria-label="後：21:30 に前倒し" style="--vbw:520px"><path d="M40 130 H484" style="stroke:var(--ink);stroke-width:1.5"/><path d="M40 125 V135" style="stroke:var(--ink);stroke-width:1.5"/><text x="40" y="154" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">0時</text><path d="M151 125 V135" style="stroke:var(--ink);stroke-width:1.5"/><text x="151" y="154" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">6時</text><path d="M262 125 V135" style="stroke:var(--ink);stroke-width:1.5"/><text x="262" y="154" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">12時</text><path d="M373 125 V135" style="stroke:var(--ink);stroke-width:1.5"/><text x="373" y="154" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">18時</text><path d="M484 125 V135" style="stroke:var(--ink);stroke-width:1.5"/><text x="484" y="154" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">24時</text><rect x="460.5" y="125" width="10" height="10" style="fill:var(--ink)"/><text x="465.5" y="174" font-size="12" font-weight="700" text-anchor="middle" style="fill:var(--ink)">請求書 23:00</text><g data-layer="B"><rect x="40" y="90" width="129.5" height="40" style="fill:var(--paper);stroke:var(--mute);stroke-width:1"/><rect x="447" y="90" width="37" height="40" style="fill:var(--paper);stroke:var(--mute);stroke-width:1"/><text x="104.75" y="114" font-size="12" font-weight="400" text-anchor="middle" style="fill:var(--mute)">静か</text><text x="465.5" y="114" font-size="12" font-weight="400" text-anchor="middle" style="fill:var(--mute)">静か</text><circle cx="437.75" cy="72" r="8" style="fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5"/><path d="M437.75 80 V124" style="stroke:var(--accent);stroke-width:1.5;stroke-dasharray:3 3"/><text x="425.75" y="56" font-size="12" font-weight="700" text-anchor="end" style="fill:var(--accent)">21:30 に前倒し</text><text x="20" y="206" font-size="12" font-weight="700" text-anchor="start" style="fill:var(--ink)">22時〜7時は鳴らさない。</text><text x="20" y="223.4" font-size="12" font-weight="700" text-anchor="start" style="fill:var(--ink)">その間の期限は、静かになる前に知らせる</text></g></svg><p class="cap ok">後：21:30 に前倒し</p></div><div class="v b"><svg data-view="A" viewBox="0 0 520 250" role="img" aria-label="前：22:00 に鳴る" style="--vbw:520px"><path d="M40 130 H484" style="stroke:var(--ink);stroke-width:1.5"/><path d="M40 125 V135" style="stroke:var(--ink);stroke-width:1.5"/><text x="40" y="154" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">0時</text><path d="M151 125 V135" style="stroke:var(--ink);stroke-width:1.5"/><text x="151" y="154" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">6時</text><path d="M262 125 V135" style="stroke:var(--ink);stroke-width:1.5"/><text x="262" y="154" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">12時</text><path d="M373 125 V135" style="stroke:var(--ink);stroke-width:1.5"/><text x="373" y="154" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">18時</text><path d="M484 125 V135" style="stroke:var(--ink);stroke-width:1.5"/><text x="484" y="154" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">24時</text><rect x="460.5" y="125" width="10" height="10" style="fill:var(--ink)"/><text x="465.5" y="174" font-size="12" font-weight="700" text-anchor="middle" style="fill:var(--ink)">請求書 23:00</text><g data-layer="A"><circle cx="447" cy="72" r="8" style="fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5"/><path d="M447 80 V124" style="stroke:var(--accent);stroke-width:1.5;stroke-dasharray:3 3"/><text x="447" y="56" font-size="12" font-weight="700" text-anchor="middle" style="fill:var(--accent)">22:00</text><text x="20" y="216" font-size="12" font-weight="700" text-anchor="start" style="fill:var(--ink)">夜の22時に鳴る。寝ている人を起こすことがある</text></g></svg><p class="cap">前：22:00 に鳴る</p></div></div>
+          <div class="txt"><p class="line">22時〜7時は鳴らさず、前倒しで知らせる</p>
+            <details><summary>理由・引き受けた不便・比べた案</summary>
+              <dl><dt>決定（全文）</dt><dd>22時〜7時は鳴らさない。その間の期限は、静かになる前の 21:30 に知らせる。</dd><dt>理由</dt><dd>夜は静かで、期限にも間に合う（推奨どおり）。</dd><dt>引き受けた不便</dt><dd>21:30 は1時間より早いことがある。</dd><dt>却下</dt><dd>A 作らない・C 端末に任せる</dd></dl>
+              <table><thead><tr><th>案</th><th>中身</th><th>結果</th><th></th></tr></thead><tbody><tr><td>A</td><td>時間に関係なく、1時間前に鳴らす</td><td>—</td><td></td></tr><tr class="pick"><td>B</td><td>22時〜7時は鳴らさず、その間の期限は静かになる前（21:30）に知らせる</td><td>選んだ</td><td>推奨</td></tr><tr><td>C</td><td>アプリでは決めず、端末の集中モードに任せる</td><td>—</td><td></td></tr></tbody></table>
+            </details></div>
+        </div>
+      </article></div></div>
+  </section>
+  <section class="card" id="s4" aria-labelledby="s4t">
+    <p class="eyebrow">4 · タスク（依存の順・tasks.json から描く）</p>
+    <h2 id="s4t">作る順番（tasks.json から描く）</h2>
+    <div class="prog"><b><span id="p-pct">—</span>%</b><div class="bar" role="progressbar" aria-label="手順の進み具合"><i id="p-bar"></i></div><span class="small">手順 <span id="p-steps">—</span></span></div>
+    <p class="lead small">完了 <b id="n-done">—</b> / <span id="n-all">—</span> · 作業中 <span id="n-doing">—</span> · いま取れる <b id="n-ready">—</b>件 · 止まった <span id="n-blocked">—</span>件 · やめた <span id="n-dropped">—</span>件</p>
+    <p class="lead small" id="par"></p>
+    <p class="live"><span id="live-dot" class="dot"></span><span id="live-txt">tasks.js を読みにいく前</span><label><input type="checkbox" id="live-on" checked> 自動で読み直す</label></p>
+    <p class="openbox" id="task-err" hidden></p>
+    <h3 class="gh">チェックリスト<span>開くと手順ごとのチェック。済んだ手順は steps_done で数える</span></h3>
+    <ol id="checklist" class="checklist"></ol>
+    <h3 class="gh">依存の図<span>上から依存の順。札を押すと表の行へ。太枠はいま取れる、破線は提案</span></h3>
+    <div class="wide-fig"><svg id="dag" viewBox="0 0 1000 100" role="img" aria-label="タスクの依存。上のタスクが終わると下のタスクを取れる。" style="--vbw:1000px"></svg></div>
+    <details><summary>エージェントの進め方（tasks.json の for_agent）</summary><ol id="for-agent"></ol></details>
+    <div class="tbl"><table class="tasks"><thead><tr><th>ID</th><th>種類</th><th>作業</th><th>担当</th><th>元の決定</th><th>前に要る</th><th>完了条件</th><th>状態</th><th>成果物・確かめた結果</th></tr></thead><tbody id="task-rows"></tbody></table></div>
+  </section>
+  <section class="card" id="s5" aria-labelledby="s5t">
+    <p class="eyebrow">5 · 却下・仮定・見直す条件</p>
+    <h2 id="s5t">外れたら見直すこと</h2>
+    <details><summary>仮定と見直す条件を開く</summary>
+      <div class="cols"><div><h4>仮定</h4><ul><li>期限を付けた直後なら許可されやすい（想定）— 外れたときの影響：Q03 を見直し、許可の前に説明の画面を足す</li><li>1日3件なら気にならない（推定）— 外れたときの影響：Q04 の上限の数を変える</li></ul></div><div><h4>見直す条件</h4><ul><li>許可される割合が半分を下回る → Q03 を見直す</li><li>まとめの通知が読まれない → Q04 の C（朝に1通）を試す</li></ul></div></div>
+    </details>
+  </section>
+  <section class="card" id="s6" aria-labelledby="s6t">
+    <p class="eyebrow">6 · 経緯</p>
+    <h2 id="s6t">2ラウンドで6問を決めた流れ</h2>
+    <div class="wide-fig"><svg viewBox="0 0 1000 188" role="img" aria-label="ラウンド1：v1 · 3問 → 3件決定。ラウンド2：v2 · 3問 → 3件決定。終わり：v3 · 未決 0" style="--vbw:1000px"><path d="M40 44H770" style="fill:none;stroke:var(--ink);stroke-width:1.5"/><circle cx="60" cy="44" r="7" style="stroke:var(--ok);fill:var(--surface);stroke-width:2"/><text x="76" y="38" font-size="14" font-weight="700" text-anchor="start" style="fill:var(--ink)">ラウンド1</text><rect x="40" y="62" width="230" height="117.6" rx="4" style="stroke:var(--line);fill:var(--surface);stroke-width:1.2"/><text x="52" y="88" font-size="13" font-weight="700" text-anchor="start" style="fill:var(--ink)">v1 · 3問 → 3件決定</text><text x="52" y="116" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">3問とも推奨どおり</text><circle cx="310" cy="44" r="7" style="stroke:var(--ok);fill:var(--surface);stroke-width:2"/><text x="326" y="38" font-size="14" font-weight="700" text-anchor="start" style="fill:var(--ink)">ラウンド2</text><rect x="290" y="62" width="230" height="117.6" rx="4" style="stroke:var(--line);fill:var(--surface);stroke-width:1.2"/><text x="302" y="88" font-size="13" font-weight="700" text-anchor="start" style="fill:var(--ink)">v2 · 3問 → 3件決定</text><text x="302" y="116" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">Q06 の備考「夜の期限はどうな</text><text x="302" y="133.4" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">る？」→ B に前倒しを足した</text><circle cx="560" cy="44" r="7" style="stroke:var(--accent);fill:var(--surface);stroke-width:2"/><text x="576" y="38" font-size="14" font-weight="700" text-anchor="start" style="fill:var(--ink)">終わり</text><rect x="540" y="62" width="230" height="117.6" rx="4" style="stroke:var(--line);fill:var(--surface);stroke-width:1.2"/><text x="552" y="88" font-size="13" font-weight="700" text-anchor="start" style="fill:var(--ink)">v3 · 未決 0</text><text x="552" y="116" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">summary.html を作っ</text><text x="552" y="133.4" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">た</text><text x="552" y="150.8" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">tasks.json（6件）</text><text x="552" y="168.2" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">作るのはまだ</text></svg></div>
+  </section>
+
+</main>
+  <a class="livepill" href="#s4" aria-label="タスクの進み具合へ"><span id="lp-dot" class="dot"></span><b id="lp-pct">—</b><span id="lp-done">—</span></a>
+<script type="application/json" id="tasks-data">{"version":1,"discussion":"examples/todo-notify","decided_in":"discussion.md v3（2026-11-12）","for_agent":["1. depends_on がすべて done で state が todo のタスクが「いま取れる」タスク。依存の残るタスクは、前のタスクが done になるまで取らない。","2. いま取れるタスクは、番号の小さい順に1件ずつ進める。サブエージェントには、持ち主が明示したときだけ渡す。","3. tasks.json は手で書かず、node \u003cgrill-visual>/scripts/task.mjs \u003cこの議論のフォルダ> で書く。取ったら task.mjs T01 doing --by 担当の名前、手順を1つ終えるたびに task.mjs T01 step。","4. steps を上から順に行う。steps と議論の決定（from の ID）に書いていないことはしない。","5. 決定と違うやり方が要りそうなら、task.mjs T01 blocked --note \"理由\" で止め、持ち主に聞く。","6. done_when を how_to_check で確かめる。","7. 確かめたら task.mjs T01 done --proof \"成果物のパス\" --checked \"確かめた結果を1〜2行\" で完了にする。commit は持ち主に頼まれたときだけ行う。"],"states":{"todo":"まだ","doing":"作業中","done":"完了","blocked":"止まった（持ち主に聞く）","dropped":"やめた（持ち主の判断）"},"tasks":[{"id":"T01","title":"端末の通知を送る土台を作る","short":"通知の土台","kind":"実装","owner":"エージェント","from":["Q01"],"depends_on":[],"proposal":false,"steps":["端末ごとの通知の仕組みを1つの入口にまとめる","決まった時刻に通知を予約し、取り消せるようにする"],"steps_done":0,"files":["src/notify/"],"done_when":"期限から予約した通知が、その時刻にロック中の画面に出る","how_to_check":"実機で期限を2分後にして待つ","state":"todo","proof":[],"checked":"","note":""},{"id":"T02","title":"初めて期限を付けたときに許可を聞く","short":"許可を聞く","kind":"実装","owner":"エージェント","from":["Q03"],"depends_on":["T01"],"proposal":false,"steps":["初めて期限を保存した直後に許可の窓を出す","断られたら、設定画面に「通知をオン」を出す"],"steps_done":0,"files":["src/todo/edit"],"done_when":"新しく入れた端末で、初めて期限を付けた直後にだけ窓が出る","how_to_check":"アプリを消して入れ直し、期限を付ける","state":"todo","proof":[],"checked":"","note":""},{"id":"T03","title":"鳴らす時刻を決める（1時間前・夜の前倒し）","short":"鳴らす時刻","kind":"実装","owner":"エージェント","from":["Q02","Q06"],"depends_on":["T01"],"proposal":false,"steps":["鳴らす時刻を期限の1時間前にする","22時〜7時に入るなら 21:30 にする","時刻の決め方に、境目の例のテストを書く"],"steps_done":0,"files":["src/notify/schedule"],"done_when":"23:00 の期限が 21:30、18:00 の期限が 17:00 に鳴る","how_to_check":"時刻の決め方のテストを流す","state":"todo","proof":[],"checked":"","note":""},{"id":"T04","title":"1日3件の上限と、夜のまとめ","short":"上限とまとめ","kind":"実装","owner":"エージェント","from":["Q04"],"depends_on":["T03"],"proposal":false,"steps":["その日の通知を期限の近い順に並べ、3件まで1件ずつにする","残りを 21:30 の1通にまとめる"],"steps_done":0,"files":["src/notify/schedule"],"done_when":"期限が12件の日に、1件ずつが3件、まとめが1件になる","how_to_check":"12件の日のテストを流す","state":"todo","proof":[],"checked":"","note":""},{"id":"T05","title":"通知に「完了」と「1時間後」のボタンを付ける","short":"通知のボタン","kind":"実装","owner":"エージェント","from":["Q05"],"depends_on":["T01"],"proposal":false,"steps":["「完了」で ToDo に印を付け、通知を消す","「1時間後」で同じ通知を1時間後に予約し直す"],"steps_done":0,"files":["src/notify/actions"],"done_when":"アプリを開かずに、通知から完了と後回しができる","how_to_check":"実機で両方のボタンを押す","state":"todo","proof":[],"checked":"","note":""},{"id":"T06","title":"実機で一日分を通して確かめる","short":"通しで確かめる","kind":"検証","owner":"持ち主","from":["Q01","Q02","Q03","Q04","Q05","Q06"],"depends_on":["T02","T04","T05"],"proposal":false,"steps":["期限を12件入れた日を作り、一日使う","うるさいと感じた時刻を書き留める"],"steps_done":0,"files":[],"done_when":"一日使って、鳴りすぎ・鳴らなすぎの記録がある","how_to_check":"書き留めた記録を見る","state":"todo","proof":[],"checked":"","note":"見直す条件（summary の5章）と照らす"}],"progress":"summary.html の進み具合は、手順（steps_done ÷ steps の数）の合計で数える。done のタスクは全手順を数える。"}</script>
+
+<script>
+/* html-foundation の parts.js — 設計図の線画の部品(references/04-parts.md)。
+   どの関数も SVG の文字列を返す。<svg viewBox="0 0 1000 H"> の中に並べて使う。
+   色は base.css の変数(var(--ink) など)を style で指すので、方向とダークに合わせて自動で変わる。
+   線の太さは3段: 区画 1・物と流れ 1.5・主役の流れ 3。強調の色(accent)は主役と押せる物だけに使う。
+   ページに <script> ごと貼るか、<script src> で読む。部品の名前がページの名前とぶつかるなら、全体を関数で包む。 */
+
+/* 色の名前('ink' 'sub' 'mute' 'stroke' 'accent' 'ok' 'ng' 'q' 'surface' 'none' など)を CSS の値にする */
+const V = c => (c === 'none' ? 'none' : c.startsWith('#') || c.startsWith('var(') ? c : `var(--${c})`);
+const ESC = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const ST = (stroke = 'ink', fill = 'surface', w = 1.5, more = '') =>
+  `style="stroke:${V(stroke)};fill:${V(fill)};stroke-width:${w}${more ? ';' + more : ''}"`;
+
+/* 文字。T は1行、TL は複数行。大きさは viewBox の単位で 12 以上にする(05 の物差しが 11px 未満を止める) */
+const T = (x, y, s, c = 'ink', sz = 13, w = 400, a = 'start') =>
+  `<text x="${x}" y="${y}" font-size="${sz}" font-weight="${w}" text-anchor="${a}" style="fill:${V(c)}">${ESC(s)}</text>`;
+const TL = (x, y, ls, c = 'ink', sz = 13, w = 400, a = 'start', lh = 1.45) => ls.map((s, i) => T(x, y + i * sz * lh, s, c, sz, w, a)).join('');
+const MONO = (x, y, s, c = 'mute', sz = 12, a = 'start') =>
+  `<text x="${x}" y="${y}" font-size="${sz}" font-weight="600" text-anchor="${a}" style="fill:${V(c)};font-family:var(--mono)">${ESC(s)}</text>`;
+
+/* 矢じりは開いた V。太さによらず同じ大きさ。1ページに1回、どれかの <svg> の頭に defs(p) を置く。
+   p は ID の頭。同じページに部品の組を2つ置くときは変える。ids: p-ink・p-mute・p-accent・p-ok・p-ng */
+const defs = (p = 'hf') => {
+  const mk = c => `<marker id="${p}-${c}" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M1.5 1.5L8.5 5L1.5 8.5" style="fill:none;stroke:${V(c)};stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"/></marker>`;
+  return `<defs>${['ink', 'mute', 'accent', 'ok', 'ng'].map(mk).join('')}</defs>`;
+};
+
+/* 区画: 破線の枠と、左上に等幅の名前。線は 1(いちばん細い) */
+const region = (x, y, w, h, name, c = 'frame') =>
+  `<g><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4" ${ST(c, 'none', 1, 'stroke-dasharray:5 4')}/>${name ? MONO(x + 10, y + 18, name) : ''}</g>`;
+
+/* 流れ: 矢印つきの線 1.5。d は縦横の線で描き、角は丸める。矢印には近くに札(note)を付ける */
+const flow = (d, c = 'ink', p = 'hf', dash = false) =>
+  `<path d="${d}" ${ST(c, 'none', 1.5, `stroke-linecap:round;stroke-linejoin:round${dash ? ';stroke-dasharray:4 4' : ''}`)} marker-end="url(#${p}-${c})"/>`;
+/* 主役の流れ: 線 3。矢じりは付けない(向きは配置と札で見せる) */
+const road = (d, c = 'ink') => `<path d="${d}" ${ST(c, 'none', 3, 'stroke-linecap:round;stroke-linejoin:round')}/>`;
+/* 線の上の札: 地の色で抜いた小さな文字 */
+const note = (x, y, s, c = 'sub', sz = 12, a = 'middle') => {
+  const w = String(s).length * sz * 0.95 + 10;
+  const x0 = a === 'middle' ? x - w / 2 : a === 'end' ? x - w : x;
+  return `<g><rect x="${x0}" y="${y - sz}" width="${w}" height="${sz + 6}" rx="2" style="fill:var(--surface)"/>${T(x0 + w / 2, y + 1, s, c, sz, 400, 'middle')}</g>`;
+};
+
+/* ---------- 物(線 1.5、地は面の色) ---------- */
+const gate = (x, y, s = 1, bar = 'accent', post = 'ink') =>
+  `<g transform="translate(${x},${y}) scale(${s})"><path d="M-14 22V-10M14 22V-10" ${ST(post, 'none', 1.5, 'stroke-linecap:round')}/><rect x="-20" y="-18" width="40" height="8" rx="1" ${ST(bar)}/></g>`;
+const cog = (x, y, s = 1) =>
+  `<g transform="translate(${x},${y}) scale(${s})"><circle r="9" ${ST('ink', 'none', 3, 'stroke-dasharray:2.4 2.3')}/><circle r="6.5" ${ST('ink', 'surface', 1.3)}/><circle r="2" ${ST('ink', 'none', 1.2)}/></g>`;
+const bot = (x, y, s = 1) =>
+  `<g transform="translate(${x},${y}) scale(${s})"><path d="M0 -8V-12" ${ST('ink', 'none', 1.3)}/><circle cy="-13.5" r="1.6" ${ST('ink', 'surface', 1.3)}/><rect x="-9" y="-8" width="18" height="14" rx="2" ${ST('ink', 'surface', 1.3)}/><rect x="-8" y="8" width="16" height="12" rx="2" ${ST('ink', 'surface', 1.3)}/><rect x="-5.5" y="-3" width="3" height="3" style="fill:var(--ink)"/><rect x="2.5" y="-3" width="3" height="3" style="fill:var(--ink)"/></g>`;
+const man = (x, y, s = 1, ghost = false, c = 'ink') =>
+  `<g transform="translate(${x},${y}) scale(${s})"><circle r="7.5" ${ST(c, 'surface', 1.5, ghost ? 'stroke-dasharray:3 2' : '')}/><path d="M-10 24V16Q-10 10 -4 10H4Q10 10 10 16V24" ${ST(c, 'surface', 1.5, ghost ? 'stroke-dasharray:3 2' : '')}/></g>`;
+const house = (x, y, s = 1, label = 'main') =>
+  `<g transform="translate(${x},${y}) scale(${s})"><path d="M-34 -24L0 -48L34 -24" ${ST('ink', 'none', 1.5, 'stroke-linejoin:round')}/><rect x="-28" y="-24" width="56" height="44" ${ST()}/>${T(0, 4, label, 'ink', 13, 700, 'middle')}</g>`;
+const shield = (x, y, s = 1) =>
+  `<g transform="translate(${x},${y}) scale(${s})"><path d="M0 -16L13 -11V0C13 9 6 14 0 17C-6 14 -13 9 -13 0V-11Z" ${ST('ink', 'surface', 1.4)}/><rect x="-5" y="-3" width="10" height="8" rx="1" ${ST('ink', 'none', 1.4)}/><path d="M-3 -3V-6A3 3 0 0 1 3 -6V-3" ${ST('ink', 'none', 1.4)}/></g>`;
+const lock = (x, y, s = 1, c = 'ink') =>
+  `<g transform="translate(${x},${y}) scale(${s})"><path d="M-6 -2V-7A6 6 0 0 1 6 -7V-2" ${ST(c, 'none')}/><rect x="-9" y="-2" width="18" height="14" rx="1.5" ${ST(c)}/><circle cy="4" r="1.8" ${ST(c)}/></g>`;
+/* 書類: 右上を折った紙。title は中の1行目 */
+const doc = (x, y, w, h, title = '', c = 'ink', fill = 'surface') =>
+  `<g><path d="M${x} ${y}H${x + w - 14}L${x + w} ${y + 14}V${y + h}H${x}Z" ${ST(c, fill)}/><path d="M${x + w - 14} ${y}V${y + 14}H${x + w}" ${ST(c, 'none', 1.2)}/>${title ? T(x + 10, y + 20, title, c, 13, 700) : ''}</g>`;
+/* 文の行の代わりの灰の線。3本目ごとに短くする */
+const lines = (x, y, w, n, gap = 9, c = 'stroke') =>
+  Array.from({ length: n }, (_, i) => `<path d="M${x} ${y + i * gap}H${x + w * (i % 3 === 2 ? 0.6 : 1)}" ${ST(c, 'none', 2, 'stroke-linecap:round')}/>`).join('');
+/* 札: 角の小さな四角に言葉。c は線と文字、fill は地 */
+const tag = (x, y, s, c = 'ink', fill = 'surface', sz = 12, w = null) => {
+  const ww = w ?? String(s).length * sz * 0.95 + 14;
+  return `<g><rect x="${x}" y="${y}" width="${ww}" height="${sz + 9}" rx="3" ${ST(c, fill, 1)}/>${T(x + ww / 2, y + sz + 2, s, c, sz, 700, 'middle')}</g>`;
+};
+const crate = (x, y, w, h, lab) =>
+  `<g><path d="M${x} ${y + 16}L${x + w / 2} ${y}L${x + w} ${y + 16}" ${ST('ink', 'none')}/><rect x="${x}" y="${y + 16}" width="${w}" height="${h - 16}" rx="1" ${ST()}/>${T(x + w / 2, y + h / 2 + 14, lab, 'ink', 12, 700, 'middle')}</g>`;
+const cal = (x, y, lab) =>
+  `<g><rect x="${x}" y="${y}" width="44" height="40" rx="2" ${ST()}/><path d="M${x} ${y + 11}H${x + 44}" ${ST('ink', 'none')}/>${T(x + 22, y + 31, lab, 'ink', 12, 700, 'middle')}</g>`;
+/* 付箋: 確かめる物(要確認)に使う。既定は黄土 */
+const sticky = (x, y, w, h, ls, kind = 'q', rot = 0) =>
+  `<g transform="rotate(${rot} ${x} ${y})"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="2" ${ST(kind, kind + '-soft', 1)}/>${TL(x + 8, y + 18, ls, kind, 12)}</g>`;
+
+/* ---------- 押せる番号と印 ---------- */
+/* 番号: on=押せる(強調色の四角に白い番号と ▸)、off=押せない(灰の枠)。
+   押せる物には data-n を付ける。ページの JS で [data-n] の click と Enter を拾う。▸ は四角の右 14〜19 に出るので隣と離す */
+const badge = (x, y, n, on = true, label = '') => on
+  ? `<g class="nb" data-n="${ESC(n)}" tabindex="0" role="button" aria-label="${ESC(label || n + ' を開く')}"><rect class="bx" x="${x - 11}" y="${y - 11}" width="22" height="22" rx="3" style="fill:var(--accent)"/>${T(x, y + 4.5, n, 'on-accent', 13, 700, 'middle')}<path d="M${x + 14} ${y - 5}l5 5-5 5" ${ST('accent', 'none', 2.2, 'stroke-linecap:round;stroke-linejoin:round')}/></g>`
+  : `<g class="nb off" aria-hidden="true"><rect x="${x - 11}" y="${y - 11}" width="22" height="22" rx="3" ${ST('mute', 'surface', 1.2)}/>${T(x, y + 4.5, n, 'mute', 13, 700, 'middle')}</g>`;
+/* 引き出しの札: (ax,ay) の物から (x,y) の札へ線を引く。kind='q' は要確認(黄土の地)、'fill' は補った所(墨の枠・✎ は呼ぶ側が書く) */
+const callout = (x, y, w, t1, t2, ax, ay, kind = 'q') => {
+  const c = kind === 'q' ? 'q' : 'ink', f = kind === 'q' ? 'q-soft' : 'surface';
+  return `<g><path d="M${x + w / 2} ${y + 38}L${ax} ${ay}" ${ST(c, 'none', 1.2)}/><rect x="${x}" y="${y}" width="${w}" height="38" rx="2" ${ST(c, f, kind === 'q' ? 1 : 1.5)}/>${T(x + 10, y + 16, t1, c, 12, 700)}${T(x + 10, y + 32, t2, 'ink', 12)}</g>`;
+};
+/* grill-visual の図の操作。build.mjs が page.js の後に差し込む。
+   層: <svg data-view="A"> の値を変えると、CSS が <g data-layer> を出し入れする。案を見るボタンと、回答の選択で変わる。
+   コマ: <svg data-at="2"> の値を変えると、CSS が <g data-frame>（そのコマだけ）と <g data-step>（そのコマまで）を出す。 */
+(()=>{
+const $=id=>document.getElementById(id);
+const svgOf=q=>$('svg-'+q);
+function setView(q,keys,fromButton){
+  const s=svgOf(q);if(!s||!s.hasAttribute('data-view')||!keys.length)return;
+  s.setAttribute('data-view',keys.join(' '));
+  document.querySelectorAll(`[data-views="${q}"] button`).forEach(b=>b.setAttribute('aria-pressed',String(keys.includes(b.dataset.v))));
+  const pv=$('pv-'+q),picked=document.querySelector(`input[name="${q}"]:checked`);
+  if(pv&&fromButton)pv.textContent=`${keys.join('・')}案を表示`+(picked?'':pv.dataset.sfx||'');
+}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-views] button');if(b)setView(b.closest('[data-views]').dataset.views,[b.dataset.v],true);});
+document.addEventListener('change',e=>{const el=e.target,q=el.name;if(!q||!svgOf(q))return;
+  const keys=[...document.querySelectorAll(`input[name="${q}"]:checked`)].map(i=>i.value);if(keys.length)setView(q,keys,false);});
+// ステップ再生: 押したときだけ進み、「再生」のときだけ自動で送る。最後のコマで止まる
+const players=[...document.querySelectorAll('[data-player]')].map(p=>{
+  const q=p.dataset.player,s=svgOf(q),n=Number(s?.dataset.frames||1),caps=JSON.parse(p.dataset.caps||'[]'),cap=document.querySelector(`[data-cap="${q}"]`);
+  let at=1,t=null;
+  const go=k=>{at=Math.max(1,Math.min(n,k));s.setAttribute('data-at',at);p.querySelector('[data-n]').textContent=`${at} / ${n}`;if(cap&&caps.length)cap.textContent=caps[at-1]||'';};
+  const stop=()=>{clearInterval(t);t=null;p.querySelector('[data-play]').textContent='再生';};
+  p.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+    if(b.hasAttribute('data-play')){if(t){stop();return;}if(at>=n)go(1);b.textContent='停止';t=setInterval(()=>{go(at+1);if(at>=n)stop();},1600);}
+    else{stop();go(at+Number(b.dataset.st));}});
+  return{q,n,go};
+});
+// 確かめ（verify.mjs）用: i 番目の案と i+1 番目のコマを、すべての図に一度に出す
+window.GV={
+  passes:()=>Math.max(1,...[...document.querySelectorAll('svg[data-keys]')].map(s=>s.dataset.keys.split(' ').length),...players.map(p=>p.n)),
+  pass:i=>{document.querySelectorAll('svg[data-keys]').forEach(s=>{const ks=s.dataset.keys.split(' ');s.setAttribute('data-view',ks[Math.min(i,ks.length-1)]);});
+    players.forEach(p=>p.go(i+1));document.querySelectorAll('svg[data-frames]').forEach(s=>{if(!document.querySelector(`[data-player="${s.id.replace('svg-','')}"]`))s.setAttribute('data-at',Math.min(i+1,Number(s.dataset.frames)));});}
+};
+})();
+/* grill-visual のまとめの JS。build.mjs が parts.js・figure.js の後に差し込む。モデルは読まない・書かない。
+   明暗の切り替え、決定の図の前／後、4章のタスク（tasks.json から進み具合・チェックリスト・依存の図・表）を受け持つ。
+   タスクは埋め込んだ #tasks-data で描き、開いたまま tasks.js（build.mjs が書く）を数秒ごとに読み直して、変わっていたら描き直す。 */
+(()=>{
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+// ページ内の移動は JS で行う。Claude の内蔵ブラウザは data: の写しで開き、#s4 への移動を止めるため。畳んだ中なら先に開く
+document.addEventListener('click',e=>{const a=e.target.closest('a[href^="#"]'),t=a&&document.getElementById(a.getAttribute('href').slice(1));if(!t)return;
+  e.preventDefault();const d=t.closest('details');if(d)d.open=true;t.scrollIntoView({block:'start'});},true);
+// 明暗の切り替え。押したときだけ html の data-theme を書き換える
+document.addEventListener('click',e=>{const b=e.target.closest('[data-theme-set]');if(!b)return;document.documentElement.dataset.theme=b.dataset.themeSet;
+  document.querySelectorAll('[data-theme-set]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));});
+// 決定の図の前／後
+const ba=(card,v)=>{card.querySelectorAll('.fig .v').forEach(x=>x.classList.toggle('on',x.classList.contains(v)));
+  card.querySelectorAll('[data-ba]').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.v===v)));};
+document.addEventListener('click',e=>{const b=e.target.closest('[data-ba]');if(b)ba(b.closest('.dcard'),b.dataset.v);});
+// 確かめ（verify.mjs）用: 0 は後、1 は前をすべての決定に出す。コマは figure.js の GV に任せる
+const fg=window.GV;
+window.GV={passes:()=>Math.max(document.querySelector('[data-ba]')?2:1,fg?fg.passes():1),
+  pass:i=>{fg?.pass(i);document.querySelectorAll('.dcard').forEach(c=>{if(c.querySelector('[data-ba]'))ba(c,i%2?'b':'a');});}};
+
+/* ---------- 4 タスク ---------- */
+const root=$('task-rows');if(!root)return;
+const R=(x,y,w,h,s='ink',f='surface',sw=1.5,more='')=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4" ${ST(s,f,sw,more)}/>`;
+const sdone=t=>t.state==='done'?t.steps.length:Math.min(t.steps_done||0,t.steps.length);
+function tasks(data){
+  const list=data.tasks,ST_JA=data.states||{};
+  const by=Object.fromEntries(list.map(t=>[t.id,t])),errs=[];
+  list.forEach(t=>{if(!ST_JA[t.state])errs.push(`${t.id}: 知らない state「${t.state}」`);
+    (t.depends_on||[]).forEach(d=>{if(!by[d])errs.push(`${t.id}: depends_on の ${d} が無い`);});});
+  const lv={},seen=new Set();
+  const L=id=>{if(lv[id]!==undefined)return lv[id];if(seen.has(id)){errs.push(`${id}: 依存が輪になっている`);return 0;}seen.add(id);
+    const ds=(by[id]?.depends_on||[]).filter(d=>by[d]);return(lv[id]=ds.length?1+Math.max(...ds.map(L)):0);};
+  list.forEach(t=>L(t.id));
+  const isDone=id=>by[id]?.state==='done',ready=t=>t.state==='todo'&&(t.depends_on||[]).every(isDone);
+  // 数と進み具合（手順の数で数える。done のタスクは全手順。やめたタスクは分母から外す）
+  const n=s=>list.filter(t=>t.state===s).length,live=list.filter(t=>t.state!=='dropped');
+  const all=live.reduce((a,t)=>a+t.steps.length,0),done=live.reduce((a,t)=>a+sdone(t),0),pct=all?Math.round(done/all*100):0;
+  const set=(id,v)=>{const e=$(id);if(e)e.textContent=v;};
+  set('n-task',list.length);set('n-prop',list.filter(t=>t.proposal).length);set('n-all',live.length);set('n-done',n('done'));set('n-doing',n('doing'));
+  set('n-blocked',n('blocked'));set('n-dropped',n('dropped'));set('n-ready',list.filter(ready).length);set('n-pct',pct);set('p-pct',pct);set('p-steps',`${done} / ${all}`);
+  set('t-done',`${n('done')}/${live.length}`);set('lp-pct',pct+'%');set('lp-done',`${n('done')}/${live.length} 完了`);
+  ['p-bar','t-bar'].forEach(id=>{const e=$(id);if(e)e.style.width=pct+'%';});
+  $('for-agent').innerHTML=(data.for_agent||[]).map(s=>`<li>${esc(s.replace(/^\d+\.\s*/,''))}</li>`).join('');
+  $('task-err').hidden=!errs.length;$('task-err').textContent=errs.length?'tasks.json の崩れ：'+errs.join(' / '):'';
+  // 並べて動かせる：いま取れて、作業中のタスクとも互いにも files が重ならないもの（フォルダは前方一致で重なりとみる）
+  const clash=(a,b)=>(a.files||[]).some(f=>(b.files||[]).some(g=>f===g||f.startsWith(g)||g.startsWith(f)));
+  const doing=list.filter(t=>t.state==='doing'),par=[],later=[];
+  list.filter(t=>ready(t)&&t.owner!=='持ち主').forEach(t=>([...doing,...par].some(u=>clash(t,u))?later:par).push(t));
+  const who=t=>t.id+(t.run_by?`（${esc(t.run_by)}）`:'');
+  const pe=$('par');if(pe)pe.innerHTML=`<b>並べて動かせる</b>：${par.length?par.map(t=>t.id).join('・'):'なし'}`
+    +(doing.length?` · <b>作業中</b>：${doing.map(who).join('・')}`:'')+(later.length?` · files が重なるので後：${later.map(t=>t.id).join('・')}`:'');
+  // チェックリスト（タスクごとのチェック。開くと手順ごとのチェック）
+  const ck=(cls,mark)=>`<span class="ck ${cls}" aria-hidden="true">${mark}</span>`;
+  $('checklist').innerHTML=list.map(t=>{
+    const sd=sdone(t),cls=t.state==='done'?'on':t.state==='blocked'?'ng':t.state==='doing'?'now':t.state==='dropped'?'off':'';
+    const mark=t.state==='done'?'✓':t.state==='blocked'?'!':t.state==='dropped'?'−':'';
+    const steps=t.steps.map((s,i)=>{const c=i<sd?'on':(i===sd&&t.state==='doing')?'now':'';
+      return `<li>${ck(c,i<sd?'✓':'')}<span>${esc(s)}${c==='now'?' <small>← 作業中</small>':''}</span></li>`;}).join('');
+    return `<li class="${t.state}${t.proposal?' prop':''}"><details data-k="cl-${t.id}"><summary>${ck(cls,mark)}<span class="cl-id">${t.id}</span>`
+      +`<span class="cl-t">${esc(t.short||t.title)}${t.owner&&t.owner!=='エージェント'?` <small>（${esc(t.owner)}）</small>`:''}</span><span class="cl-n">${sd}/${t.steps.length}</span>`
+      +`<span class="cl-st">${esc((ST_JA[t.state]||t.state)+(t.state==='doing'&&t.run_by?` · ${t.run_by}`:'')+(ready(t)?'・いま取れる':''))}</span></summary><ol class="cl-steps">${steps}</ol>`
+      +(t.note&&(t.state==='blocked'||t.state==='dropped')?`<p class="cl-proof">${t.state==='blocked'?'止まった':'やめた'}理由：${esc(t.note)}</p>`:'')
+      +((t.proof||[]).length?`<p class="cl-proof">成果物：${t.proof.map(esc).join('、')}</p>`:'')+'</details></li>';}).join('');
+  // 依存の図（上から依存の順）
+  const rows=[];list.forEach(t=>(rows[lv[t.id]]||=[]).push(t));
+  // 1段に4枚まで。多い段は折り返す
+  const W=228,H=42,GY=64,PER=4,pos={};let y=16;
+  rows.forEach(r=>{r.forEach((t,j)=>{const per=Math.min(r.length-Math.floor(j/PER)*PER,PER),x0=(1000-(per*(W+16)-16))/2;pos[t.id]=[x0+(j%PER)*(W+16),y+Math.floor(j/PER)*GY];});y+=Math.ceil(r.length/PER)*GY;});
+  let lines='',boxes='';
+  list.forEach(t=>(t.depends_on||[]).filter(d=>pos[d]).forEach(d=>{const[x1,y1]=pos[d],[x2,y2]=pos[t.id],a=x1+W/2,b=y1+H,c=x2+W/2;
+    lines+=`<path d="M${a} ${b}C${a} ${b+22} ${c} ${y2-24} ${c} ${y2-3}" ${ST('stroke','none',1.2)} marker-end="url(#tk-mute)"/>`;}));
+  list.forEach(t=>{const[x,yy]=pos[t.id],rd=ready(t);
+    const[s,f,w]=t.state==='dropped'?['line','paper',1.2]:t.state==='done'?['ok','ok-soft',1.5]:t.state==='doing'?['accent','accent-soft',1.5]:t.state==='blocked'?['ng','ng-soft',1.5]:rd?['accent','surface',2.5]:['frame','surface',1.2];
+    const label=t.id+' · '+(t.state==='dropped'?'やめた':ST_JA[t.state]||t.state)+(t.state==='doing'?` ${sdone(t)}/${t.steps.length}`:'')+(rd?'・いま取れる':'');
+    boxes+=`<a class="tnode" href="#t-${t.id.toLowerCase()}">`+R(x,yy,W,H,s,f,w,t.proposal||t.state==='dropped'?'stroke-dasharray:5 4':'')
+      +MONO(x+10,yy+17,label,s==='frame'||s==='line'?'mute':s,12)+T(x+10,yy+34,t.short||t.title,'ink',12,700)
+      +(t.owner&&t.owner!=='エージェント'?T(x+W-8,yy+17,t.owner,'q',12,700,'end'):'')+'</a>';});
+  $('dag').setAttribute('viewBox',`0 0 1000 ${y}`);$('dag').innerHTML=defs('tk')+lines+boxes;
+  // 表
+  root.innerHTML=list.map(t=>`<tr id="t-${t.id.toLowerCase()}"${t.proposal?' class="prop"':''}><td class="tid">${t.id}</td>`
+    +`<td>${t.proposal?'<span class="tag prop">提案</span>':'<span class="tag done">議論で決定</span>'}<br><small>${esc(t.kind)}</small></td>`
+    +`<td><b>${esc(t.title)}</b><details data-k="tb-${t.id}"><summary>手順・確かめ方・ファイル</summary><ol>${t.steps.map(s=>`<li>${esc(s)}</li>`).join('')}</ol>`
+    +`<p>確かめ方：${esc(t.how_to_check)}</p>${(t.files||[]).length?`<p>ファイル：${t.files.map(esc).join('、')}</p>`:''}${t.note?`<p>注：${esc(t.note)}</p>`:''}</details></td>`
+    +`<td>${esc(t.owner)}${t.run_by?`<br><small>${esc(t.run_by)}</small>`:''}</td><td>${(t.from||[]).join('・')||'—'}</td><td>${(t.depends_on||[]).join('・')||'—'}</td><td>${esc(t.done_when)}</td>`
+    +`<td>${esc(ST_JA[t.state]||t.state)}<br><small>手順 ${sdone(t)}/${t.steps.length}${ready(t)?'・いま取れる':''}</small></td>`
+    +`<td>${(t.proof||[]).length?t.proof.map(esc).join('<br>'):'—'}${t.checked?`<br><small>${esc(t.checked)}</small>`:''}</td></tr>`).join('');
+}
+// 同じ中身なら描き直さない。描き直すときは、開いていた畳みを開き直す
+let last='';
+function load(d){const s=JSON.stringify(d);if(s===last)return false;
+  const open=[...document.querySelectorAll('#s4 details[open][data-k]')].map(e=>e.dataset.k);
+  last=s;tasks(d);open.forEach(k=>{const e=document.querySelector(`#s4 details[data-k="${k}"]`);if(e)e.open=true;});return true;}
+// 自動の読み直し：script で tasks.js を読む（file:// でも動く）。読めないときは知らせる
+const hm=()=>new Date().toLocaleTimeString('ja-JP',{hour12:false});
+let changedAt='';
+function live(ok,changed){if(changed)changedAt=hm();
+  ['live-dot','lp-dot'].forEach(id=>{const e=$(id);if(e)e.className='dot'+(ok?' ok':'');});
+  $('live-txt').textContent=ok?`5秒ごとに tasks.js を読み直し中 · 最終確認 ${hm()}${changedAt?` · 最後に変わった ${changedAt}`:''}`
+    :'自動で読み直せない（tasks.js を読めない）。file:// か http で開き、組み立てを流してから開き直す';}
+function poll(){if(!$('live-on').checked)return;
+  const s=document.createElement('script');s.src='tasks.js?t='+Date.now();
+  s.onload=()=>{s.remove();live(true,!!window.TASKS_DATA&&load(window.TASKS_DATA));};
+  s.onerror=()=>{s.remove();live(false);};document.head.appendChild(s);}
+load(JSON.parse($('tasks-data').textContent));
+poll();setInterval(poll,5000);$('live-on').addEventListener('change',poll);
+})();
+</script>
+</body>
+</html>

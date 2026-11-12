@@ -1,0 +1,106 @@
+<!-- grill-visual の議論ページのひな形。build.mjs が page.json から埋める。モデルは読まない・書かない。
+     <!-- @名前 --> から次の @ までが1つのひな形。{{x}} は文字（エスケープする）、{{{x}}} は HTML をそのまま入れる。
+     回答欄（fieldset 以下）と札の形は skeleton の固定の決まり。変えると回答バーが読めなくなる。 -->
+<!-- @head -->
+  <div class="topline"><p class="eyebrow">GRILL-VISUAL · v{{version}} · {{date}}{{ended}}</p><span class="theme-sw" role="group" aria-label="表示の明暗"><button type="button" data-theme-set="light" aria-pressed="true">ライト</button><button type="button" data-theme-set="dark" aria-pressed="false">ダーク</button></span></div>
+  <h1>{{title}}</h1>
+  <p class="lead">{{lead}}</p>
+  <div class="stats">
+    <span class="stat"><b>{{round}}</b>ラウンド目{{rlimit}}</span>
+    <span class="stat"><b>{{asked}}</b>問 質問済み{{qlimit}}</span>
+    <span class="stat"><b>{{decided}}</b>件 決定</span>
+    <span class="stat"><b id="draft-n">0</b>件 回答メモ（未送信）</span>
+  </div>
+<!-- @section -->
+  <section class="card"{{{idattr}}} aria-labelledby="{{sid}}-t">
+    <p class="eyebrow">{{eyebrow}}</p>
+    <h2 id="{{sid}}-t">{{title}}</h2>
+    {{{lead}}}{{{figs}}}{{{note}}}{{{details}}}
+  </section>
+<!-- @question -->
+  <section class="card" id="{{qid}}" aria-labelledby="{{qid}}-t">
+    <div class="question">
+      <div class="q-head"><div><p class="eyebrow">{{ID}} · 影響 {{impact}} · {{undo}}{{multi}} · ラウンド{{round}}</p><h2 id="{{qid}}-t">{{title}}</h2></div>{{{badge}}}</div>
+      <div>
+        <p class="ctx"><b>背景：</b>{{background}}</p>
+        <p class="ctx"><b>争点：</b>{{issue}}</p>
+        <div class="visual">
+          <div class="visual-top"><span>{{fig_top}}</span><span id="pv-{{qid}}" data-sfx="{{sfx}}">{{preview}}</span></div>
+          {{{views}}}{{{fig}}}{{{player}}}
+          <p class="vnote" id="note-{{qid}}">{{fig_note}}</p>
+        </div>
+        {{{details}}}
+      </div>
+      {{{answer}}}
+    </div>
+  </section>
+<!-- @answer -->
+      <fieldset data-q="{{qid}}">
+        <legend class="sr">{{ID}} {{title}}</legend>
+        {{{choices}}}
+        <p class="why">推奨理由：{{why}}</p>
+        <label class="note-label" for="n-{{qid}}">備考（任意）</label>
+        <textarea id="n-{{qid}}" data-note="{{qid}}"></textarea>
+        <button class="ghost" type="button" data-hold="{{qid}}" aria-pressed="false">保留にする</button>
+      </fieldset>
+<!-- @answer-skip -->
+      <div class="skip"><p class="why">見送り：{{skip}}</p>{{{choices}}}</div>
+<!-- @choice -->
+        <label class="choice"><input type="{{type}}" name="{{qid}}" value="{{key}}" data-label="{{name}}"><b>{{key}}：{{text}}</b>{{{rec}}}<small>{{{desc}}}<span class="pros">＋ {{pros}}</span> ／ <span class="cons">− {{cons}}</span></small></label>
+<!-- @choice-plain -->
+        <div class="choice"><b>{{key}}：{{text}}</b>{{{rec}}}<small>{{{desc}}}<span class="pros">＋ {{pros}}</span> ／ <span class="cons">− {{cons}}</span></small></div>
+<!-- @rec -->
+<span class="rec">推奨</span>
+<!-- @badge-open -->
+<span class="badge" id="st-{{qid}}">回答待ち</span>
+<!-- @badge-done -->
+<span class="badge done" id="st-{{qid}}" data-decided="1">決定（{{pick}}）</span>
+<!-- @badge-skip -->
+<span class="badge" id="st-{{qid}}" data-decided="1">見送り</span>
+<!-- @done-group -->
+  <section class="card" id="done-qs" aria-labelledby="done-t">
+    <p class="eyebrow">DECIDED · 畳んであります</p>
+    <h2 id="done-t">決まった問い・見送り（{{n}}件）</h2>
+    <p class="lead small">今回答える問いと分けるため、ここに畳んでいます。開くと元の図・選択肢を見られ、選び直すと回答メモに入ります。</p>
+    {{{rows}}}
+  </section>
+<!-- @done-q -->
+    <details class="done-q"><summary><b>{{ID}}</b> {{title}} <span class="badge{{done}}">{{state}}</span></summary>
+{{{card}}}
+    </details>
+<!-- @notes-all -->
+  <section class="card" aria-labelledby="all-t">
+    <h2 id="all-t">全体の備考</h2>
+    <p class="lead small">論点にない意見・追加の要望・「{{first}}をもっと説明して」などを書けます。</p>
+    <textarea id="n-all" data-note="all" style="min-height:70px;margin-top:8px"></textarea>
+  </section>
+<!-- @end -->
+  <section class="card" aria-labelledby="end-t">
+    <p class="eyebrow">END</p>
+    <h2 id="end-t">議論は終わりました</h2>
+    <p class="lead">{{text}} <a href="summary.html">summary.html</a></p>
+  </section>
+<!-- @views -->
+          <div class="views-row"><span class="label">案を見る</span><span class="views" role="group" aria-label="{{ID}} の案を見る" data-views="{{qid}}">{{{buttons}}}</span></div>
+<!-- @view-btn -->
+<button type="button" data-v="{{key}}" aria-pressed="{{on}}">{{key}}</button>
+<!-- @player -->
+          <div class="step" data-player="{{qid}}" data-caps="{{caps}}"><button type="button" data-st="-1">◀ 前へ</button><button type="button" data-st="1">次へ ▶</button><button type="button" data-play>再生</button><span data-n>1 / {{n}}</span></div>
+          <p class="vnote" data-cap="{{qid}}">{{cap}}</p>
+<!-- @decisions -->
+  <section class="card" aria-labelledby="log-t">
+    <p class="eyebrow">DECISIONS · BEFORE → AFTER</p>
+    <h2 id="log-t">決まったことで、こう変わる（{{n}}件）</h2>
+    <p class="lead small">{{lead}}</p>
+    {{{rows}}}
+  </section>
+<!-- @decision-round -->
+    <p class="eyebrow ba-round">ラウンド{{round}}の決定</p>
+<!-- @decision -->
+    <article class="ba-row" id="d-{{qid}}">
+      <h3><a href="#{{qid}}">{{ID}}</a> {{line}} <span class="badge done" data-decided="1">決定（{{pick}}）</span></h3>
+      <div class="ba-two">{{{figs}}}</div>
+      <details><summary>理由・引き受けた不便・却下した案{{more}}</summary><dl class="ba-dl"><dt>決定（全文）</dt><dd>{{adopted}}</dd><dt>理由</dt><dd>{{reason}}</dd><dt>引き受けた不便</dt><dd>{{cost}}</dd><dt>却下</dt><dd>{{rejected}}</dd>{{{note}}}</dl></details>
+    </article>
+<!-- @ba-fig -->
+        <figure class="ba-{{k}}"><figcaption>{{label}}</figcaption>{{{svg}}}<p class="cap{{ok}}">{{cap}}</p></figure>

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Grill with diagrams"
+  short_description: "Settle a plan while looking at an illustrated HTML page, updating the decisions after every answer"
+  default_prompt: "$grill-visual Turn this plan into an illustrated HTML page a first-time reader can follow, and let's settle the open questions together."

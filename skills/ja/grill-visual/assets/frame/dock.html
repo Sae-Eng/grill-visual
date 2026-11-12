@@ -1,0 +1,7 @@
+<!-- 5. 常時表示の回答バー。エージェントは内蔵ブラウザで #answer-text を読む。読めない環境ではコピーを使う -->
+<div class="dock" role="region" aria-label="回答メモとコピー">
+  <div class="dock-inner">
+    <div><p class="meta">回答メモ · 未送信 · 再読み込みで消えます · <span id="dock-n"></span> · 内蔵ブラウザなら、チャットに「回答した」だけでも読み取ります</p><pre id="answer-text">まだ選択していません。</pre></div>
+    <div><button class="copy" id="copy" type="button"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="8" y="8" width="14" height="14" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>回答をコピー</button><p id="copy-status" role="status"></p></div>
+  </div>
+</div>

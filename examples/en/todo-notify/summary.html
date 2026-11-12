@@ -1,0 +1,598 @@
+<!doctype html>
+<html lang="ja" data-direction="blueprint" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Add notifications to a to-do app without making them noisy · summary</title>
+<!-- grill-visual の build.mjs が page.json と fig/ から組み立てた。手で直さず、page.json か図の断片を直して組み立て直す -->
+<style>
+/* html-foundation の tokens.css — 変数だけ(references/02-look.md・04-parts.md)。
+   既定(書体・文字の段・余白と線と角)は、どの方向でも同じ値。
+   色は <html data-direction="blueprint|instrument|paper"> で方向の組を切り替える。無ければ blueprint。
+   ダークは OS の設定に従う。<html data-theme="light|dark"> を付けると、そちらを優先する。
+   ページの <style> の頭に中身ごと貼る。題材に合わせて --accent などを上書きしてよい(02-look.md「色の決め方」)。
+   自分の部品を持つ作り手(grill-visual など)は、これだけを貼り、部品をこの変数で描く。 */
+
+/* ---------- 既定: 書体・文字の段・余白と線と角 ---------- */
+:root{
+  --font:"Hiragino Sans","Hiragino Kaku Gothic ProN","Noto Sans JP",system-ui,sans-serif;
+  --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  --fs:15px;--fs-s:13px;--fs-label:12px;--fs-h3:17px;--fs-h2:20px;--fs-h1:26px;
+  --lh:1.7;--lh-s:1.5;--lh-h:1.4;
+  --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:24px;--s6:32px;--s7:48px;
+  --r:4px;--r-chip:3px;--rule:1.5px;--hit:44px;
+  --measure:40em;--page:1080px;
+  --fig-min:940px; /* 絵の最小幅。viewBox の幅 1000・文字 12 なら、表示で 11px 以上を保つ */
+}
+
+/* ---------- 方向の組: 設計図とレビュー票(blueprint・既定) ---------- */
+:root{
+  --bg:#ffffff;--surface:#ffffff;--paper:#f6f7f9;
+  --ink:#16191d;--sub:#5b636d;--mute:#6b727c;--line:#e1e4e8;--line2:#eef0f3;--frame:#9aa1ab;--stroke:#c9ced6;
+  --accent:#2747c0;--accent-soft:#e8ecfb;--on-accent:#ffffff;
+  --q:#8a6100;--q-soft:#faf0d4;--ok:#1f7a4d;--ok-soft:#e4f2ea;--ng:#c4312b;--ng-soft:#fbeceb;
+  --grid:rgba(39,71,192,.07);--focus:#ffd43d;
+}
+/* ---------- 計器盤(instrument): 状態・数・比べ ---------- */
+:root[data-direction="instrument"]{
+  --bg:#f3f4f6;--surface:#ffffff;--paper:#eceef1;
+  --ink:#14171a;--sub:#555d66;--mute:#68707a;--line:#dde1e6;--line2:#eceef1;--frame:#98a0aa;--stroke:#c6ccd4;
+  --accent:#0e7490;--accent-soft:#e0f1f5;--on-accent:#ffffff;
+  --grid:transparent;
+}
+/* ---------- 紙の資料(paper): 読み物・手順書。地は白に近い灰(生成りにしない) ---------- */
+:root[data-direction="paper"]{
+  --bg:#fcfcfc;--surface:#ffffff;--paper:#f4f5f6;
+  --ink:#1b1d20;--sub:#575c63;--mute:#6a7078;--line:#e3e5e8;--line2:#f0f1f3;--frame:#9ca1a8;--stroke:#cbcfd4;
+  --accent:#1f4e79;--accent-soft:#e6eef6;--on-accent:#ffffff;
+  --grid:transparent;--measure:36em;
+}
+
+/* ---------- ダーク: 地は暗く(#111417)、面は地より少し明るくして浮かせる。本文と地は 15.9:1。
+   色は鮮やかさを抑えた淡い色のまま(鮮やかな色を暗い地に置くとチカチカする)。地は方向で変えず、強調の色だけ変える ---------- */
+:root[data-theme="dark"]{
+  --bg:#111417;--surface:#1a1e23;--paper:#1d2126;
+  --ink:#eceef1;--sub:#b9c0c8;--mute:#8e959e;--line:#2a2f36;--line2:#20242a;--frame:#737a84;--stroke:#3a3f46;
+  --accent:#9fb0ec;--accent-soft:#2b303d;--on-accent:#111417;
+  --q:#d4b06a;--q-soft:#343026;--ok:#82c095;--ok-soft:#25332e;--ng:#e88a85;--ng-soft:#38292b;
+  --grid:rgba(159,176,236,.05);--focus:#c9a43a;
+}
+:root[data-theme="dark"][data-direction="instrument"]{--accent:#67c3d8;--accent-soft:#20343a;--grid:transparent}
+:root[data-theme="dark"][data-direction="paper"]{--accent:#8fb3d9;--accent-soft:#28313a;--grid:transparent}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#111417;--surface:#1a1e23;--paper:#1d2126;
+    --ink:#eceef1;--sub:#b9c0c8;--mute:#8e959e;--line:#2a2f36;--line2:#20242a;--frame:#737a84;--stroke:#3a3f46;
+    --accent:#9fb0ec;--accent-soft:#2b303d;--on-accent:#111417;
+    --q:#d4b06a;--q-soft:#343026;--ok:#82c095;--ok-soft:#25332e;--ng:#e88a85;--ng-soft:#38292b;
+    --grid:rgba(159,176,236,.05);--focus:#c9a43a;
+  }
+  :root[data-direction="instrument"]:not([data-theme="light"]){--accent:#67c3d8;--accent-soft:#20343a;--grid:transparent}
+  :root[data-direction="paper"]:not([data-theme="light"]){--accent:#8fb3d9;--accent-soft:#28313a;--grid:transparent}
+}
+
+/* 入力欄とスクロールバーの明暗も合わせる */
+html{color-scheme:light dark}
+:root[data-theme="light"]{color-scheme:light}
+:root[data-theme="dark"]{color-scheme:dark}
+
+/* grill-visual のまとめの CSS。build.mjs が tokens.css の後に差し込む */
+/* 骨格の名前を、土台の変数に読み替える。未決は「だめ」の色（--ng）で示す */
+:root{--card:var(--surface);--warn:var(--q);--warn-soft:var(--q-soft);--open:var(--ng);--open-soft:var(--ng-soft)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:var(--fs)/var(--lh) var(--font)}
+main{max-width:1180px;margin:0 auto;padding:28px 24px 64px}
+h1,h2,h3,h4{line-height:var(--lh-h)}
+h1{font-size:var(--fs-h1);margin:0 0 6px;text-wrap:balance}h2{font-size:var(--fs-h2);margin:0 0 6px}h3{font-size:var(--fs);margin:0}
+h4{font-size:var(--fs-s);margin:0 0 8px;color:var(--sub)}
+a{color:var(--accent)}
+.lead{color:var(--sub);margin:0}.small{font-size:var(--fs-s)}
+.eyebrow{font:600 var(--fs-label)/1.4 var(--mono);color:var(--mute);margin:0 0 6px}
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
+.stats{display:flex;gap:8px;flex-wrap:wrap}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:4px 12px;font-size:var(--fs-label);color:var(--sub)}
+.stat b{color:var(--ink);font:700 15px var(--mono);margin-right:4px}
+.toc{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;font-size:var(--fs-label)}
+.toc a{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:2px 10px;text-decoration:none;color:var(--sub)}
+.toc a:hover{border-color:var(--ink);color:var(--ink)}
+.card{border-top:var(--rule) solid var(--ink);padding-top:var(--s3);margin-top:var(--s7)}
+.changes{background:var(--warn-soft);border:1px solid var(--warn);border-radius:var(--r);padding:10px 16px;margin-top:14px;font-size:var(--fs-s);color:var(--ink)}
+.changes ul{margin:4px 0 0;padding-left:18px}
+svg{display:block;width:100%;height:auto}svg text{font-family:inherit}
+.wide-fig{overflow-x:auto;border:1px solid var(--line);border-radius:var(--r);background-color:var(--surface);background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:16px 16px}
+.wide-fig svg{min-width:min(940px,var(--vbw,940px))}
+svg[style*="--vbw"]{max-width:var(--vbw);margin-inline:auto}
+/* 1 の図に載せる決定の札。<a class="chip" href="#d-q01"><rect …/><text …>Q01</text></a> */
+.chip rect{fill:var(--ok-soft);stroke:var(--ok)}.chip text{fill:var(--ok);font-weight:600}
+.chip.open rect{fill:var(--open-soft);stroke:var(--open)}.chip.open text{fill:var(--open)}
+.chip:hover rect,.chip:focus rect{fill:var(--ok)}.chip:hover text,.chip:focus text{fill:var(--on-accent)}
+.tnode:hover rect{stroke-width:2.5}
+.mech{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:14px}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:var(--r);padding:14px;min-width:0}
+.panel.full{grid-column:1/-1}
+.player{display:flex;gap:6px;align-items:center;margin-top:8px;font-size:var(--fs-label);color:var(--sub);flex-wrap:wrap}
+.player button{font:inherit;font-size:var(--fs-label);border:1px solid var(--frame);background:var(--card);color:var(--ink);border-radius:var(--r);padding:4px 12px;cursor:pointer}
+.player button:focus-visible,.seg button:focus-visible{outline:2px solid var(--ink);outline-offset:2px;box-shadow:0 0 0 5px var(--focus)}
+.caption{font-size:var(--fs-s);background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:8px 12px;margin-top:8px;min-height:42px}
+.st{opacity:.18;transition:opacity .2s}.st.on{opacity:1}
+@media (prefers-reduced-motion:reduce){.st{transition:none}}
+.dgroup{margin-top:16px}.gh{font-size:var(--fs-s);color:var(--sub);margin:0 0 8px}.gh span{font-weight:400;color:var(--mute);margin-left:6px}
+.dgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;grid-auto-flow:dense}
+.dcard{border:1px solid var(--line);border-radius:var(--r);padding:12px;background:var(--card);display:flex;flex-direction:column;gap:6px;scroll-margin-top:16px}
+.dcard.wide{grid-column:span 2}
+.dcard.wide .body{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;align-items:start}
+.dcard:target{outline:2px solid var(--accent);outline-offset:2px}
+.dcard header{display:flex;align-items:center;gap:8px}
+.qid{font:600 var(--fs-label) var(--mono);color:var(--ok);background:var(--ok-soft);border-radius:var(--r-chip);padding:1px 6px}
+.rnd{font:600 var(--fs-label) var(--mono);color:var(--mute)}
+.seg{margin-left:auto;display:inline-flex}
+.seg button{font:inherit;font-size:var(--fs-label);border:1px solid var(--frame);background:var(--card);padding:1px 10px;color:var(--sub);cursor:pointer}
+.seg button:first-child{border-radius:var(--r) 0 0 var(--r)}.seg button:last-child{border-radius:0 var(--r) var(--r) 0;margin-left:-1px}
+.seg button[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent);color:var(--ink);position:relative}
+.fig .v{display:none}.fig .v.on{display:block}
+.cap{margin:2px 0 0;font-size:var(--fs-label);line-height:1.4;color:var(--sub);text-align:center}.cap.ok{color:var(--ok)}
+.txt{display:flex;flex-direction:column;gap:6px;margin-top:4px}
+.line{margin:0;font-size:var(--fs-s);font-weight:600}
+details{font-size:var(--fs-s);color:var(--sub)}summary{cursor:pointer;font-size:var(--fs-s);color:var(--ink)}
+details dl{display:grid;grid-template-columns:7em minmax(0,1fr);gap:2px 10px;margin:8px 0}
+details dt{color:var(--mute)}details dd{margin:0}
+table{border-collapse:collapse;width:100%;font-size:var(--fs-s);line-height:var(--lh-s)}
+th,td{border-bottom:1px solid var(--line);padding:4px 8px;text-align:left;vertical-align:top}
+th{font:600 var(--fs-label)/1.4 var(--mono);color:var(--mute);border-bottom:var(--rule) solid var(--ink)}
+tr.pick td{background:var(--ok-soft);color:var(--ok);font-weight:600}
+.tbl{overflow-x:auto;margin-top:12px}
+.tasks td.tid{font:600 var(--fs-label) var(--mono);color:var(--ok);white-space:nowrap}
+.tasks tr.prop td.tid{color:var(--warn)}
+.tasks tr:target td{background:var(--accent-soft)}
+.tasks td:nth-child(4),.tasks td:nth-child(5),.tasks td:nth-child(7){white-space:nowrap}
+.tag{display:inline-block;font-size:var(--fs-label);border-radius:var(--r-chip);padding:0 6px;border:1px solid var(--line);white-space:nowrap}
+.tag.done{background:var(--ok-soft);border-color:var(--ok);color:var(--ok)}
+.tag.prop{background:var(--warn-soft);border-color:var(--warn);color:var(--warn)}
+.tag.open{background:var(--open-soft);border-color:var(--open);color:var(--open)}
+.cols{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:10px}
+.cols ul{margin:0;padding-left:18px;font-size:var(--fs-s)}
+.openbox{border:1px dashed var(--open);background:var(--open-soft);border-radius:var(--r);padding:12px 16px;font-size:var(--fs-s)}
+.openbox dl{display:grid;grid-template-columns:9em minmax(0,1fr);gap:2px 12px;margin:6px 0 0}.openbox dt{color:var(--sub)}.openbox dd{margin:0}
+@media (max-width:960px){.dgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:720px){.dgrid,.mech,.cols,.dcard.wide .body{grid-template-columns:1fr}.dcard.wide{grid-column:auto}}
+/* 明暗の切り替え。既定はライト（html の data-theme="light"）。OS の設定には従わせない */
+.topline{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.theme-sw{display:inline-flex}
+.theme-sw button{font:inherit;font-size:var(--fs-label);border:1px solid var(--frame);background:var(--card);color:var(--sub);padding:2px 10px;cursor:pointer}
+.theme-sw button:first-child{border-radius:var(--r) 0 0 var(--r)}.theme-sw button:last-child{border-radius:0 var(--r) var(--r) 0;margin-left:-1px}
+.theme-sw button[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent);color:var(--ink);position:relative}
+.theme-sw button:focus-visible{outline:2px solid var(--ink);outline-offset:2px;box-shadow:0 0 0 5px var(--focus)}
+/* build.mjs のまとめの部品。決定の図は 520 幅なので2列にする（3列では図の文字が小さすぎる） */
+.dgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.lead,.line,details p,.cols li{max-width:var(--measure)}
+.panel .fig-box svg{min-width:0}
+.step{display:flex;gap:8px;align-items:center;margin-top:8px;font-size:var(--fs-label);color:var(--sub);flex-wrap:wrap}
+.step button{font:inherit;font-size:var(--fs-label);border:1px solid var(--frame);background:var(--card);color:var(--ink);border-radius:var(--r);padding:4px 12px;min-height:32px;cursor:pointer}
+.step button:focus-visible{outline:2px solid var(--ink);outline-offset:2px;box-shadow:0 0 0 5px var(--focus)}
+.vnote{font-size:var(--fs-s);line-height:var(--lh-s);color:var(--sub);margin:8px 0 0}
+/* 4 タスク: 表・進み具合・自動の読み直し・チェックリスト */
+.tasks ol{margin:4px 0;padding-left:18px}.tasks p{margin:2px 0}.tasks td small{color:var(--mute);font-size:var(--fs-label)}
+.tasks td:nth-child(3){min-width:16em}.tasks td:nth-child(7){min-width:14em}.tasks td:nth-child(8){white-space:nowrap}.tasks td:nth-child(9){min-width:8em}
+.tasks td:nth-child(4),.tasks td:nth-child(5),.tasks td:nth-child(6){white-space:nowrap}
+#for-agent{font-size:var(--fs-s);color:var(--ink);padding-left:20px}#for-agent li{max-width:var(--measure)}
+#task-err{color:var(--ink)}
+.prog{display:flex;align-items:center;gap:12px;margin:12px 0 4px}
+.prog>b{font:700 var(--fs-h2)/1 var(--mono);color:var(--ok);min-width:3.2em}
+.prog .bar{flex:1;height:12px;border:1px solid var(--frame);border-radius:6px;background:var(--paper);overflow:hidden}
+.prog .bar i{display:block;height:100%;width:0;background:var(--ok);transition:width .5s}
+.prog-top{max-width:560px}
+.live{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:4px 0 8px;font-size:var(--fs-label);color:var(--mute)}
+.live label{display:inline-flex;align-items:center;gap:4px;margin-left:auto;color:var(--sub);cursor:pointer}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--frame);flex:none}
+.dot.ok{background:var(--ok);box-shadow:0 0 0 3px var(--ok-soft)}
+.checklist{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 14px;margin:8px 0 14px;padding:0;list-style:none;align-items:start}
+.checklist>li>details{border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+.checklist>li.doing>details{border-color:var(--accent)}
+.checklist>li.blocked>details{border-color:var(--ng)}
+.checklist>li.prop>details{border-style:dashed}
+.checklist summary{display:grid;grid-template-columns:auto auto minmax(0,1fr) auto;gap:4px 8px;align-items:center;padding:7px 10px;cursor:pointer;list-style:none}
+.checklist summary::-webkit-details-marker{display:none}
+.checklist .cl-st{grid-column:3/5;font-size:var(--fs-label);color:var(--mute)}
+.checklist li.doing .cl-st{color:var(--accent)}
+.checklist li.blocked .cl-st{color:var(--ng)}
+.checklist li.done .cl-t{color:var(--mute)}
+.cl-id{font:600 var(--fs-label) var(--mono);color:var(--mute)}
+.cl-t{font-size:var(--fs-s);font-weight:700;min-width:0}
+.cl-t small,.cl-steps small{font-weight:400;color:var(--mute);font-size:var(--fs-label)}
+.cl-n{font:var(--fs-label) var(--mono);color:var(--mute)}
+.ck{display:inline-grid;place-items:center;width:16px;height:16px;border:1.5px solid var(--frame);border-radius:3px;font:700 12px/1 var(--mono);color:var(--surface);flex:none;background:var(--surface)}
+.ck.on{background:var(--ok);border-color:var(--ok)}
+.ck.now{border:2px solid var(--accent);background:var(--accent-soft)}
+.ck.ng{border-color:var(--ng);color:var(--ng)}
+.ck.off{border-style:dashed;color:var(--mute)}.checklist li.dropped .cl-t{color:var(--mute);text-decoration:line-through}.checklist>li.dropped>details{border-style:dashed}
+.cl-steps{margin:0;padding:2px 12px 10px;list-style:none;border-top:1px solid var(--line)}
+.cl-steps li{display:flex;gap:8px;align-items:flex-start;font-size:var(--fs-s);padding:4px 0;max-width:38em}
+.cl-steps .ck{margin-top:3px}
+.cl-proof{margin:0;padding:0 12px 10px;font-size:var(--fs-label);color:var(--sub)}
+.livepill{position:fixed;right:16px;bottom:16px;z-index:5;display:flex;align-items:center;gap:8px;padding:6px 12px;border:1px solid var(--frame);border-radius:999px;background:var(--surface);color:var(--ink);font:var(--fs-label) var(--mono);text-decoration:none}
+.livepill b{font-size:var(--fs-s);color:var(--ok)}
+#s4 .gh{margin-top:18px}
+@media (max-width:720px){.dgrid,.checklist{grid-template-columns:1fr}.live label{margin-left:0}}
+
+/* 層とコマ（build.mjs が断片から書く） */
+svg[data-view] [data-layer]{display:none}
+svg[data-view~="N"] [data-layer~="N"]{display:inline}
+svg[data-view~="A"] [data-layer~="A"]{display:inline}
+svg[data-view~="B"] [data-layer~="B"]{display:inline}
+svg[data-view~="C"] [data-layer~="C"]{display:inline}
+svg[data-at] [data-frame]{display:none}
+svg[data-at] [data-step]{opacity:.18;transition:opacity .2s}
+@media (prefers-reduced-motion:reduce){svg[data-at] [data-step]{transition:none}}
+svg[data-at="1"] [data-frame="1"]{display:inline}
+svg[data-at="1"] [data-step="1"]{opacity:1}
+svg[data-at="2"] [data-frame="2"]{display:inline}
+svg[data-at="2"] [data-step="1"],svg[data-at="2"] [data-step="2"]{opacity:1}
+svg[data-at="3"] [data-frame="3"]{display:inline}
+svg[data-at="3"] [data-step="1"],svg[data-at="3"] [data-step="2"],svg[data-at="3"] [data-step="3"]{opacity:1}
+svg[data-at="4"] [data-frame="4"]{display:inline}
+svg[data-at="4"] [data-step="1"],svg[data-at="4"] [data-step="2"],svg[data-at="4"] [data-step="3"],svg[data-at="4"] [data-step="4"]{opacity:1}
+svg[data-at="5"] [data-frame="5"]{display:inline}
+svg[data-at="5"] [data-step="1"],svg[data-at="5"] [data-step="2"],svg[data-at="5"] [data-step="3"],svg[data-at="5"] [data-step="4"],svg[data-at="5"] [data-step="5"]{opacity:1}
+</style>
+</head>
+<body>
+<main>
+  <div class="top">
+    <div>
+      <div class="topline"><p class="eyebrow">GRILL-VISUAL · summary · v3 · 2026-11-12</p><span class="theme-sw" role="group" aria-label="Light or dark"><button type="button" data-theme-set="light" aria-pressed="true">Light</button><button type="button" data-theme-set="dark" aria-pressed="false">Dark</button></span></div>
+      <h1>The to-do app sends a device notification 1 hour before the due time, and keeps the noise down with a daily limit and night hours</h1>
+      <p class="lead">People who set a due time get a lock-screen notification 1 hour before, and can tap &quot;Done&quot; from it. At most 3 individual notifications fire per day, and nothing fires at night.</p>
+    </div>
+    <div class="stats"><span class="stat"><b>6</b> decided</span><span class="stat"><b>0</b> open</span><span class="stat"><b id="n-task">6</b> tasks (proposals <span id="n-prop">0</span>)</span><span class="stat"><b>2</b> rounds · 6 questions</span></div>
+  </div>
+    <div class="prog prog-top"><b><span id="n-pct">—</span>%</b><div class="bar" role="progressbar" aria-label="Progress of task steps"><i id="t-bar"></i></div><a class="small" href="#s4">Tasks <span id="t-done">—</span> done</a></div>
+  <nav class="toc" aria-label="Chapters"><a href="#s1">1 Finished picture</a><a href="#s2">2 Mechanism</a><a href="#s3">3 Decisions</a><a href="#s4">4 Tasks</a><a href="#s5">5 Rejected, assumptions</a><a href="#s6">6 History</a><a href="index.html">Discussion page</a><a href="discussion.md">Record</a><a href="tasks.json">tasks.json</a></nav>
+  
+  <section class="card" id="s1" aria-labelledby="s1t">
+    <p class="eyebrow">1 · Finished picture</p>
+    <h2 id="s1t">Notifications after the decisions</h2>
+    <p class="lead small">Green chips are decided questions. Press one to jump to its diagram and reason.</p>
+    <div class="wide-fig"><svg viewBox="0 0 1000 410" role="img" aria-label="Notifications after the decisions. Left: the card on a phone lock screen, Buy milk, due 18:00, 1 hour left, with Done and In 1 hour buttons. Middle: how it fires on a busy day. The 3 nearest due times fire individually 1 hour before, the rest go out as one message at 21:30, and nothing fires from 22:00 to 7:00. Right: when permission is asked. The app asks whether to allow notifications when the first due time is set." style="--vbw:1000px"><g><rect x="20" y="20" width="280" height="370" rx="4" style="stroke:var(--ink);fill:none;stroke-width:1;stroke-dasharray:5 4"/><text x="30" y="38" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--mute);font-family:var(--mono)">Card on the screen</text></g><rect x="50" y="46" width="200" height="320" rx="20" style="fill:var(--surface);stroke:var(--ink);stroke-width:1.5"/><rect x="130" y="56" width="40" height="5" rx="2.5" style="fill:var(--line)"/><text x="150" y="118" font-size="34" font-weight="700" text-anchor="middle" style="fill:var(--ink)">17:00</text><text x="150" y="142" font-size="12" font-weight="400" text-anchor="middle" style="fill:var(--sub)">Thu, Nov 12</text><rect x="62" y="172" width="176" height="112" rx="10" style="fill:var(--paper);stroke:var(--frame)"/><text x="74" y="192" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--mute);font-family:var(--mono)">ToDo · now</text><text x="74" y="214" font-size="14" font-weight="700" text-anchor="start" style="fill:var(--ink)">Buy milk</text><text x="74" y="234" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">Due 18:00 (1 hour left)</text><rect x="74" y="246" width="64" height="28" rx="6" style="fill:var(--accent)"/><text x="106" y="265" font-size="12" font-weight="700" text-anchor="middle" style="fill:var(--on-accent)">Done</text><rect x="146" y="246" width="80" height="28" rx="6" style="fill:var(--surface);stroke:var(--ink)"/><text x="186" y="265" font-size="12" font-weight="700" text-anchor="middle" style="fill:var(--ink)">In 1 hour</text><a class="chip" href="#d-q01"><rect x="62" y="300" width="38" height="20" rx="3"/><text x="81" y="314" font-size="12" text-anchor="middle">Q01</text></a><a class="chip" href="#d-q05"><rect x="106" y="300" width="38" height="20" rx="3"/><text x="125" y="314" font-size="12" text-anchor="middle">Q05</text></a><g><rect x="320" y="20" width="460" height="370" rx="4" style="stroke:var(--ink);fill:none;stroke-width:1;stroke-dasharray:5 4"/><text x="330" y="38" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--mute);font-family:var(--mono)">A busy day</text></g><rect x="340" y="110" width="122.5" height="50" style="fill:var(--paper);stroke:var(--mute);stroke-width:1"/><rect x="725" y="110" width="35" height="50" style="fill:var(--paper);stroke:var(--mute);stroke-width:1"/><text x="401.25" y="140" font-size="12" font-weight="400" text-anchor="middle" style="fill:var(--mute)">Quiet</text><text x="742.5" y="140" font-size="12" font-weight="400" text-anchor="middle" style="fill:var(--mute)">Quiet</text><path d="M340 160 H760" style="stroke:var(--ink);stroke-width:1.5"/><text x="340" y="182" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">0:00</text><text x="445" y="182" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">6:00</text><text x="550" y="182" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">12:00</text><text x="655" y="182" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">18:00</text><text x="760" y="182" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">24:00</text><circle cx="532.5" cy="92" r="8" style="fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5"/><path d="M532.5 100 V158" style="stroke:var(--accent);stroke-width:1.5;stroke-dasharray:3 3"/><circle cx="637.5" cy="92" r="8" style="fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5"/><path d="M637.5 100 V158" style="stroke:var(--accent);stroke-width:1.5;stroke-dasharray:3 3"/><circle cx="672.5" cy="92" r="8" style="fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5"/><path d="M672.5 100 V158" style="stroke:var(--accent);stroke-width:1.5;stroke-dasharray:3 3"/><text x="532.5" y="72" font-size="12" font-weight="700" text-anchor="middle" style="fill:var(--accent)">Nearest 3, 1 hour before each</text><rect x="707.25" y="83" width="18" height="18" rx="3" style="fill:var(--surface);stroke:var(--accent);stroke-width:1.5"/><path d="M716.25 101 V158" style="stroke:var(--accent);stroke-width:1.5;stroke-dasharray:3 3"/><text x="746.25" y="50" font-size="12" font-weight="700" text-anchor="end" style="fill:var(--ink)">21:30 the rest, in one message</text><a class="chip" href="#d-q02"><rect x="340" y="200" width="38" height="20" rx="3"/><text x="359" y="214" font-size="12" text-anchor="middle">Q02</text></a><a class="chip" href="#d-q04"><rect x="384" y="200" width="38" height="20" rx="3"/><text x="403" y="214" font-size="12" text-anchor="middle">Q04</text></a><a class="chip" href="#d-q06"><rect x="428" y="200" width="38" height="20" rx="3"/><text x="447" y="214" font-size="12" text-anchor="middle">Q06</text></a><text x="340" y="250" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">• Fires 1 hour before the due time</text><text x="340" y="267.4" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">• Individual alerts: 3 a day at most. The rest in one at 21:30</text><text x="340" y="284.8" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">• Quiet 22:00 to 7:00. Due times then are notified earlier</text><text x="340" y="302.2" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">• Tap &quot;Done&quot; or &quot;In 1 hour&quot; on the notification</text><g><rect x="800" y="20" width="180" height="370" rx="4" style="stroke:var(--frame);fill:none;stroke-width:1;stroke-dasharray:5 4"/><text x="810" y="38" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--mute);font-family:var(--mono)">Asking permission</text></g><rect x="820" y="56" width="140" height="196" rx="16" style="fill:var(--surface);stroke:var(--ink);stroke-width:1.5"/><text x="834" y="96" font-size="13" font-weight="700" text-anchor="start" style="fill:var(--ink)">Buy milk</text><rect x="834" y="106" width="112" height="22" rx="4" style="fill:var(--accent-soft);stroke:var(--accent)"/><text x="842" y="122" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--accent);font-family:var(--mono)">Due 18:00</text><rect x="830" y="146" width="120" height="78" rx="8" style="fill:var(--paper);stroke:var(--ink);stroke-width:1.5"/><text x="890" y="164" font-size="12" font-weight="700" text-anchor="middle" style="fill:var(--ink)">Allow</text><text x="890" y="181.4" font-size="12" font-weight="700" text-anchor="middle" style="fill:var(--ink)">notifications?</text><text x="858" y="210" font-size="12" font-weight="400" text-anchor="middle" style="fill:var(--sub)">Don&#39;t</text><text x="922" y="210" font-size="12" font-weight="700" text-anchor="middle" style="fill:var(--accent)">Allow</text><text x="820" y="284" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">Asked when the first</text><text x="820" y="301.4" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">due time is set</text><a class="chip" href="#d-q03"><rect x="820" y="330" width="38" height="20" rx="3"/><text x="839" y="344" font-size="12" text-anchor="middle">Q03</text></a></svg></div>
+  </section>
+  <section class="card" id="s2" aria-labelledby="s2t">
+    <p class="eyebrow">2 · Mechanism</p>
+    <h2 id="s2t">From a due time to a notification, and how many arrive</h2>
+    <div class="mech">      <div class="panel full"><h4>From a due time to a notification</h4><div class="wide-fig"><svg id="svg-m1" data-at="1" data-frames="5" viewBox="0 0 1000 200" role="img" aria-label="Five stages from a due time to a notification. 1: set a due time; if it is the first, ask for permission. 2: set the fire time to 1 hour before the due time. 3: if it falls between 22:00 and 7:00, move it earlier to 21:30. 4: up to the 3rd today is sent individually; from the 4th on, it goes into the roundup. 5: send the notification with Done and In 1 hour buttons." style="--vbw:1000px"><defs><marker id="sf-ink" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M1.5 1.5L8.5 5L1.5 8.5" style="fill:none;stroke:var(--ink);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"/></marker><marker id="sf-mute" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M1.5 1.5L8.5 5L1.5 8.5" style="fill:none;stroke:var(--mute);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"/></marker><marker id="sf-accent" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M1.5 1.5L8.5 5L1.5 8.5" style="fill:none;stroke:var(--accent);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"/></marker><marker id="sf-ok" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M1.5 1.5L8.5 5L1.5 8.5" style="fill:none;stroke:var(--ok);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"/></marker><marker id="sf-ng" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M1.5 1.5L8.5 5L1.5 8.5" style="fill:none;stroke:var(--ng);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"/></marker></defs><g data-step="1"><rect x="20" y="30" width="176" height="150" rx="4" style="fill:var(--surface);stroke:var(--frame);stroke-width:1"/><text x="32" y="52" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--mute);font-family:var(--mono)">1</text><text x="50" y="52" font-size="13" font-weight="700" text-anchor="start" style="fill:var(--ink)">Set a due time</text><text x="32" y="88" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">If it is the first,</text><text x="32" y="105.4" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">ask for permission</text><text x="32" y="164" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--mute);font-family:var(--mono)">Q03</text><path d="M197 105 H214" style="stroke:var(--ink);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round" marker-end="url(#sf-ink)"/></g><g data-step="2"><rect x="216" y="30" width="176" height="150" rx="4" style="fill:var(--surface);stroke:var(--frame);stroke-width:1"/><text x="228" y="52" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--mute);font-family:var(--mono)">2</text><text x="246" y="52" font-size="13" font-weight="700" text-anchor="start" style="fill:var(--ink)">1 hour before</text><text x="228" y="88" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">Fire time =</text><text x="228" y="105.4" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">due time − 1 hour</text><text x="228" y="164" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--mute);font-family:var(--mono)">Q02</text><path d="M393 105 H410" style="stroke:var(--ink);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round" marker-end="url(#sf-ink)"/></g><g data-step="3"><rect x="412" y="30" width="176" height="150" rx="4" style="fill:var(--surface);stroke:var(--frame);stroke-width:1"/><text x="424" y="52" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--mute);font-family:var(--mono)">3</text><text x="442" y="52" font-size="13" font-weight="700" text-anchor="start" style="fill:var(--ink)">Quiet hours?</text><text x="424" y="88" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">If 22:00 to 7:00,</text><text x="424" y="105.4" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">move earlier to 21:30</text><text x="424" y="164" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--mute);font-family:var(--mono)">Q06</text><path d="M589 105 H606" style="stroke:var(--ink);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round" marker-end="url(#sf-ink)"/></g><g data-step="4"><rect x="608" y="30" width="176" height="150" rx="4" style="fill:var(--surface);stroke:var(--frame);stroke-width:1"/><text x="620" y="52" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--mute);font-family:var(--mono)">4</text><text x="638" y="52" font-size="13" font-weight="700" text-anchor="start" style="fill:var(--ink)">Today&#39;s count</text><text x="620" y="88" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">Up to the 3rd: single</text><text x="620" y="105.4" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">4th on: into roundup</text><text x="620" y="164" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--mute);font-family:var(--mono)">Q04</text><path d="M785 105 H802" style="stroke:var(--ink);fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round" marker-end="url(#sf-ink)"/></g><g data-step="5"><rect x="804" y="30" width="176" height="150" rx="4" style="fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5"/><text x="816" y="52" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--mute);font-family:var(--mono)">5</text><text x="834" y="52" font-size="13" font-weight="700" text-anchor="start" style="fill:var(--ink)">Send it</text><text x="816" y="88" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">With &quot;Done&quot; and</text><text x="816" y="105.4" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">&quot;In 1 hour&quot; buttons</text><text x="816" y="164" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--mute);font-family:var(--mono)">Q05</text></g></svg></div>          <div class="step" data-player="m1" data-caps="[&quot;Set a due time. If it is the first, ask for permission here (Q03).&quot;,&quot;Set the fire time to 1 hour before the due time (Q02).&quot;,&quot;If it falls between 22:00 and 7:00, move it earlier to 21:30 (Q06).&quot;,&quot;Up to the 3rd one today is sent individually; from the 4th on, it goes into the evening roundup (Q04).&quot;,&quot;Send the notification with \&quot;Done\&quot; and \&quot;In 1 hour\&quot; buttons (Q01, Q05).&quot;]"><button type="button" data-st="-1">◀ Prev</button><button type="button" data-st="1">Next ▶</button><button type="button" data-play>Play</button><span data-n>1 / 5</span></div>
+          <p class="vnote" data-cap="m1">Set a due time. If it is the first, ask for permission here (Q03).</p></div>
+      <div class="panel full"><h4>Notifications on a day with 12 due items</h4><div class="wide-fig"><svg id="svg-m2" viewBox="0 0 1000 184" role="img" aria-label="Notifications received on a day with 12 due items. Before: 0. After the decisions: 3 individual notifications and 1 roundup, 4 in total. With no limit: 12." style="--vbw:1000px"><text x="20" y="20" font-size="12" fill="var(--mute)" style="font-family:var(--mono)">Notifications on a day with 12 due items (count): before, after the decisions, and with no limit</text><text x="20" y="58" font-size="13" font-weight="700" fill="var(--ink)">Before (none)</text><text x="157.1" y="58" font-size="12" fill="var(--ink)">0. You notice only after opening</text><text x="20" y="96" font-size="13" font-weight="700" fill="var(--ink)">After decisions</text><rect x="149.1" y="78" width="138.5" height="26" fill="var(--accent)" stroke="var(--accent)" stroke-width="1.5"/><text x="157.1" y="96" font-size="12" fill="var(--paper)">Individual 3</text><rect x="287.6" y="78" width="46.2" height="26" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5"/><text x="295.6" y="96" font-size="12" fill="var(--ink)">1</text><text x="341.7" y="96" font-size="12" fill="var(--ink)">4 (3 + 1 roundup)</text><text x="20" y="134" font-size="13" font-weight="700" fill="var(--ink)">With no limit</text><rect x="149.1" y="116" width="553.9" height="26" fill="var(--paper)" stroke="var(--mute)" stroke-dasharray="3 3" stroke-width="1.5"/><text x="157.1" y="134" font-size="12" fill="var(--ink)">12</text><text x="711" y="134" font-size="12" fill="var(--ink)">12 (estimate)</text><text x="149.1" y="166" font-size="12" text-anchor="middle" fill="var(--mute)" style="font-family:var(--mono)">0</text><text x="287.6" y="166" font-size="12" text-anchor="middle" fill="var(--mute)" style="font-family:var(--mono)">3</text><text x="426.1" y="166" font-size="12" text-anchor="middle" fill="var(--mute)" style="font-family:var(--mono)">6</text><text x="564.6" y="166" font-size="12" text-anchor="middle" fill="var(--mute)" style="font-family:var(--mono)">9</text><text x="703" y="166" font-size="12" text-anchor="middle" fill="var(--mute)" style="font-family:var(--mono)">12</text><text x="841.5" y="166" font-size="12" text-anchor="middle" fill="var(--mute)" style="font-family:var(--mono)">15</text><text x="980" y="166" font-size="12" text-anchor="end" fill="var(--mute)" style="font-family:var(--mono)">18</text></svg></div></div></div>
+  </section>
+  <section class="card" id="s3" aria-labelledby="s3t">
+    <p class="eyebrow">3 · Decisions (6)</p>
+    <h2 id="s3t">What was decided</h2>
+    <p class="lead small">Diagrams show the after state. "Before" at the top right switches to the state before the decision. Reasons, inconveniences and compared options are folded.</p>
+        <div class="dgroup"><h3 class="gh">How it shows<span>Where, when and what you can do</span></h3><div class="dgrid">      <article class="dcard wide" id="d-q01">
+        <header><span class="qid">Q01</span><h3>Where should notifications appear?</h3><span class="rnd">R1</span><span class="seg" role="group" aria-label="Before and after of Q01"><button type="button" data-ba data-v="b" aria-pressed="false">Before</button><button type="button" data-ba data-v="a" aria-pressed="true">After</button></span></header>
+        <div class="body">
+          <div class="fig"><div class="v a on"><svg data-view="B" viewBox="0 0 520 290" role="img" aria-label="After: A badge shows on the lock screen" style="--vbw:520px"><rect x="30" y="24" width="170" height="250" rx="18" style="fill:var(--surface);stroke:var(--ink);stroke-width:1.5"/><rect x="95" y="33" width="40" height="5" rx="2.5" style="fill:var(--line)"/><text x="234" y="56" font-size="13" font-weight="700" text-anchor="start" style="fill:var(--ink)">Do you notice it while closed?</text><text x="234" y="96" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">Opening the app</text><text x="234" y="136" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">Seeing the lock screen</text><text x="234" y="176" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">Opening your email</text><g data-layer="B"><text x="115" y="92" font-size="30" font-weight="700" text-anchor="middle" style="fill:var(--ink)">17:00</text><text x="115" y="114" font-size="12" font-weight="400" text-anchor="middle" style="fill:var(--sub)">Thu, Nov 12</text><rect x="42" y="146" width="146" height="62" rx="8" style="fill:var(--paper);stroke:var(--frame)"/><text x="52" y="164" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--mute);font-family:var(--mono)">ToDo · now</text><text x="52" y="184" font-size="13" font-weight="700" text-anchor="start" style="fill:var(--ink)">Buy milk</text><text x="52" y="200" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">Due 18:00</text><g><rect x="436" y="81" width="70" height="21" rx="3" style="stroke:var(--ok);fill:var(--surface);stroke-width:1"/><text x="471" y="95" font-size="12" font-weight="700" text-anchor="middle" style="fill:var(--ok)">Noticed</text></g><g><rect x="436" y="121" width="70" height="21" rx="3" style="stroke:var(--ok);fill:var(--surface);stroke-width:1"/><text x="471" y="135" font-size="12" font-weight="700" text-anchor="middle" style="fill:var(--ok)">Noticed</text></g><g><rect x="436" y="161" width="70" height="21" rx="3" style="stroke:var(--mute);fill:var(--surface);stroke-width:1"/><text x="471" y="175" font-size="12" font-weight="700" text-anchor="middle" style="fill:var(--mute)">Missed</text></g><text x="234" y="230" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">You notice by glancing at the screen.</text><text x="234" y="247.4" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">Permission needed first (Q03)</text></g></svg><p class="cap ok">After: A badge shows on the lock screen</p></div><div class="v b"><svg data-view="N" viewBox="0 0 520 290" role="img" aria-label="Before: You notice only after opening" style="--vbw:520px"><rect x="30" y="24" width="170" height="250" rx="18" style="fill:var(--surface);stroke:var(--ink);stroke-width:1.5"/><rect x="95" y="33" width="40" height="5" rx="2.5" style="fill:var(--line)"/><text x="234" y="56" font-size="13" font-weight="700" text-anchor="start" style="fill:var(--ink)">Do you notice it while closed?</text><text x="234" y="96" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">Opening the app</text><text x="234" y="136" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">Seeing the lock screen</text><text x="234" y="176" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--ink)">Opening your email</text><g data-layer="N"><text x="115" y="92" font-size="30" font-weight="700" text-anchor="middle" style="fill:var(--ink)">17:00</text><text x="115" y="114" font-size="12" font-weight="400" text-anchor="middle" style="fill:var(--sub)">Thu, Nov 12</text><g><rect x="436" y="81" width="70" height="21" rx="3" style="stroke:var(--mute);fill:var(--surface);stroke-width:1"/><text x="471" y="95" font-size="12" font-weight="700" text-anchor="middle" style="fill:var(--mute)">Missed</text></g><g><rect x="436" y="121" width="70" height="21" rx="3" style="stroke:var(--mute);fill:var(--surface);stroke-width:1"/><text x="471" y="135" font-size="12" font-weight="700" text-anchor="middle" style="fill:var(--mute)">Missed</text></g><g><rect x="436" y="161" width="70" height="21" rx="3" style="stroke:var(--mute);fill:var(--surface);stroke-width:1"/><text x="471" y="175" font-size="12" font-weight="700" text-anchor="middle" style="fill:var(--mute)">Missed</text></g><text x="234" y="236" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">Nothing notifies you today</text></g></svg><p class="cap">Before: You notice only after opening</p></div></div>
+          <div class="txt"><p class="line">Send a device notification</p>
+            <details><summary>Reason, accepted inconvenience, compared options</summary>
+              <dl><dt>Decision (full)</dt><dd>Send a device notification that also shows on the lock screen.</dd><dt>Reason</dt><dd>Only B reaches you while the app is closed (as recommended).</dd><dt>Accepted inconvenience</dt><dd>Needs permission (Q03). Noisy if there are many (kept down by Q04 and Q06).</dd><dt>Rejected</dt><dd>A In-app badge · C Morning email</dd></dl>
+              <table><thead><tr><th>Option</th><th>Content</th><th>Result</th><th></th></tr></thead><tbody><tr><td>A</td><td>Show a &quot;due soon&quot; badge when the app is opened</td><td>—</td><td></td></tr><tr class="pick"><td>B</td><td>Send a device notification that also shows on the lock screen</td><td>chosen</td><td>recommended</td></tr><tr><td>C</td><td>Email one message at 7:00 every morning with that day's to-dos</td><td>—</td><td></td></tr></tbody></table>
+            </details></div>
+        </div>
+      </article>
+      <article class="dcard" id="d-q02">
+        <header><span class="qid">Q02</span><h3>When should it notify?</h3><span class="rnd">R1</span><span class="seg" role="group" aria-label="Before and after of Q02"><button type="button" data-ba data-v="b" aria-pressed="false">Before</button><button type="button" data-ba data-v="a" aria-pressed="true">After</button></span></header>
+        <div class="body">
+          <div class="fig"><div class="v a on"><svg data-view="B" viewBox="0 0 520 260" role="img" aria-label="After: Fires 1 hour before" style="--vbw:520px"><text x="140" y="58" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">6:00</text><path d="M140 66 V220" style="stroke:var(--line);stroke-width:1;stroke-dasharray:2 4"/><text x="195.5" y="58" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">9:00</text><path d="M195.5 66 V220" style="stroke:var(--line);stroke-width:1;stroke-dasharray:2 4"/><text x="251" y="58" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">12:00</text><path d="M251 66 V220" style="stroke:var(--line);stroke-width:1;stroke-dasharray:2 4"/><text x="306.5" y="58" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">15:00</text><path d="M306.5 66 V220" style="stroke:var(--line);stroke-width:1;stroke-dasharray:2 4"/><text x="362" y="58" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">18:00</text><path d="M362 66 V220" style="stroke:var(--line);stroke-width:1;stroke-dasharray:2 4"/><text x="417.5" y="58" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">21:00</text><path d="M417.5 66 V220" style="stroke:var(--line);stroke-width:1;stroke-dasharray:2 4"/><text x="473" y="58" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">24:00</text><path d="M473 66 V220" style="stroke:var(--line);stroke-width:1;stroke-dasharray:2 4"/><text x="20" y="108" font-size="13" font-weight="400" text-anchor="start" style="fill:var(--ink)">Book dentist</text><path d="M140 104 H473" style="stroke:var(--frame);stroke-width:1.5"/><rect x="246" y="99" width="10" height="10" style="fill:var(--ink)"/><text x="20" y="158" font-size="13" font-weight="400" text-anchor="start" style="fill:var(--ink)">Buy milk</text><path d="M140 154 H473" style="stroke:var(--frame);stroke-width:1.5"/><rect x="357" y="149" width="10" height="10" style="fill:var(--ink)"/><text x="20" y="208" font-size="13" font-weight="400" text-anchor="start" style="fill:var(--ink)">Pay invoice</text><path d="M140 204 H473" style="stroke:var(--frame);stroke-width:1.5"/><rect x="449.5" y="199" width="10" height="10" style="fill:var(--ink)"/><rect x="20" y="236" width="10" height="10" style="fill:var(--ink)"/><text x="36" y="245" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">Due</text><circle cx="86" cy="241" r="6" style="fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5"/><text x="98" y="245" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">Fires</text><g data-layer="B"><circle cx="232.5" cy="86" r="7" style="fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5"/><path d="M232.5 93 V99" style="stroke:var(--accent);stroke-width:1.5"/><circle cx="343.5" cy="136" r="7" style="fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5"/><path d="M343.5 143 V149" style="stroke:var(--accent);stroke-width:1.5"/><circle cx="436" cy="186" r="7" style="fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5"/><path d="M436 193 V199" style="stroke:var(--accent);stroke-width:1.5"/><text x="150" y="245" font-size="12" font-weight="700" text-anchor="start" style="fill:var(--ink)">1 hour before. Time to act</text></g></svg><p class="cap ok">After: Fires 1 hour before</p></div><div class="v b"><svg data-view="N" viewBox="0 0 520 260" role="img" aria-label="Before: Nothing fires" style="--vbw:520px"><text x="140" y="58" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">6:00</text><path d="M140 66 V220" style="stroke:var(--line);stroke-width:1;stroke-dasharray:2 4"/><text x="195.5" y="58" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">9:00</text><path d="M195.5 66 V220" style="stroke:var(--line);stroke-width:1;stroke-dasharray:2 4"/><text x="251" y="58" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">12:00</text><path d="M251 66 V220" style="stroke:var(--line);stroke-width:1;stroke-dasharray:2 4"/><text x="306.5" y="58" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">15:00</text><path d="M306.5 66 V220" style="stroke:var(--line);stroke-width:1;stroke-dasharray:2 4"/><text x="362" y="58" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">18:00</text><path d="M362 66 V220" style="stroke:var(--line);stroke-width:1;stroke-dasharray:2 4"/><text x="417.5" y="58" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">21:00</text><path d="M417.5 66 V220" style="stroke:var(--line);stroke-width:1;stroke-dasharray:2 4"/><text x="473" y="58" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">24:00</text><path d="M473 66 V220" style="stroke:var(--line);stroke-width:1;stroke-dasharray:2 4"/><text x="20" y="108" font-size="13" font-weight="400" text-anchor="start" style="fill:var(--ink)">Book dentist</text><path d="M140 104 H473" style="stroke:var(--frame);stroke-width:1.5"/><rect x="246" y="99" width="10" height="10" style="fill:var(--ink)"/><text x="20" y="158" font-size="13" font-weight="400" text-anchor="start" style="fill:var(--ink)">Buy milk</text><path d="M140 154 H473" style="stroke:var(--frame);stroke-width:1.5"/><rect x="357" y="149" width="10" height="10" style="fill:var(--ink)"/><text x="20" y="208" font-size="13" font-weight="400" text-anchor="start" style="fill:var(--ink)">Pay invoice</text><path d="M140 204 H473" style="stroke:var(--frame);stroke-width:1.5"/><rect x="449.5" y="199" width="10" height="10" style="fill:var(--ink)"/><rect x="20" y="236" width="10" height="10" style="fill:var(--ink)"/><text x="36" y="245" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">Due</text><circle cx="86" cy="241" r="6" style="fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5"/><text x="98" y="245" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">Fires</text><g data-layer="N"><text x="150" y="245" font-size="12" font-weight="700" text-anchor="start" style="fill:var(--ink)">Nothing fires today</text></g></svg><p class="cap">Before: Nothing fires</p></div></div>
+          <div class="txt"><p class="line">Notify 1 hour before the due time</p>
+            <details><summary>Reason, accepted inconvenience, compared options</summary>
+              <dl><dt>Decision (full)</dt><dd>Notify 1 hour before the due time.</dd><dt>Reason</dt><dd>You can act when you find out (as recommended).</dd><dt>Accepted inconvenience</dt><dd>1 hour is not enough for some tasks. The lead time could be made selectable later.</dd><dt>Rejected</dt><dd>A At the due time · C 9:00 roundup</dd></dl>
+              <table><thead><tr><th>Option</th><th>Content</th><th>Result</th><th></th></tr></thead><tbody><tr><td>A</td><td>Notify exactly at the due time</td><td>—</td><td></td></tr><tr class="pick"><td>B</td><td>Notify 1 hour before the due time</td><td>chosen</td><td>recommended</td></tr><tr><td>C</td><td>Notify once at 9:00 with everything due that day</td><td>—</td><td></td></tr></tbody></table>
+            </details></div>
+        </div>
+      </article>
+      <article class="dcard" id="d-q05">
+        <header><span class="qid">Q05</span><h3>What can you do from a notification?</h3><span class="rnd">R2</span><span class="seg" role="group" aria-label="Before and after of Q05"><button type="button" data-ba data-v="b" aria-pressed="false">Before</button><button type="button" data-ba data-v="a" aria-pressed="true">After</button></span></header>
+        <div class="body">
+          <div class="fig"><div class="v a on"><svg data-view="B" viewBox="0 0 520 266" role="img" aria-label="After: Tap: 1 step" style="--vbw:520px"><rect x="20" y="24" width="480" height="128" rx="12" style="fill:var(--paper);stroke:var(--frame);stroke-width:1.5"/><text x="36" y="46" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--mute);font-family:var(--mono)">ToDo · now</text><text x="36" y="72" font-size="16" font-weight="700" text-anchor="start" style="fill:var(--ink)">Buy milk</text><text x="36" y="94" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">Due 18:00 (1 hour left)</text><text x="20" y="184" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">Steps to finish</text><g data-layer="B"><rect x="250" y="108" width="70" height="32" rx="6" style="fill:var(--accent);stroke:var(--accent);stroke-width:1.2"/><text x="285" y="129" font-size="13" font-weight="700" text-anchor="middle" style="fill:var(--on-accent)">Done</text><rect x="330" y="108" width="158" height="32" rx="6" style="fill:var(--surface);stroke:var(--ink);stroke-width:1.2"/><text x="409" y="129" font-size="13" font-weight="700" text-anchor="middle" style="fill:var(--ink)">Remind me in 1 hour</text></g><g data-layer="B"><g><rect x="20" y="196" width="112" height="21" rx="3" style="stroke:var(--ok);fill:var(--surface);stroke-width:1"/><text x="76" y="210" font-size="12" font-weight="700" text-anchor="middle" style="fill:var(--ok)">Tap &quot;Done&quot;</text></g><text x="20" y="250" font-size="12" font-weight="700" text-anchor="start" style="fill:var(--ink)">1 step. No need to open the app</text></g></svg><p class="cap ok">After: Tap: 1 step</p></div><div class="v b"><svg data-view="A" viewBox="0 0 520 266" role="img" aria-label="Before: Open, find it: 3 steps" style="--vbw:520px"><rect x="20" y="24" width="480" height="128" rx="12" style="fill:var(--paper);stroke:var(--frame);stroke-width:1.5"/><text x="36" y="46" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--mute);font-family:var(--mono)">ToDo · now</text><text x="36" y="72" font-size="16" font-weight="700" text-anchor="start" style="fill:var(--ink)">Buy milk</text><text x="36" y="94" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">Due 18:00 (1 hour left)</text><text x="20" y="184" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">Steps to finish</text><g data-layer="A"><text x="250" y="130" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--mute)">Tapping it opens the app</text></g><g data-layer="A"><g><rect x="20" y="196" width="112" height="21" rx="3" style="stroke:var(--ink);fill:var(--surface);stroke-width:1"/><text x="76" y="210" font-size="12" font-weight="700" text-anchor="middle" style="fill:var(--ink)">Tap the card</text></g><path d="M134 206 H142" style="stroke:var(--ink);stroke-width:1.5"/><g><rect x="144" y="196" width="112" height="21" rx="3" style="stroke:var(--ink);fill:var(--surface);stroke-width:1"/><text x="200" y="210" font-size="12" font-weight="700" text-anchor="middle" style="fill:var(--ink)">Find it in app</text></g><path d="M258 206 H266" style="stroke:var(--ink);stroke-width:1.5"/><g><rect x="268" y="196" width="112" height="21" rx="3" style="stroke:var(--ok);fill:var(--surface);stroke-width:1"/><text x="324" y="210" font-size="12" font-weight="700" text-anchor="middle" style="fill:var(--ok)">Mark it done</text></g><text x="20" y="250" font-size="12" font-weight="700" text-anchor="start" style="fill:var(--ink)">3 steps. You get distracted in the app and forget</text></g></svg><p class="cap">Before: Open, find it: 3 steps</p></div></div>
+          <div class="txt"><p class="line">&quot;Done&quot; and &quot;In 1 hour&quot; buttons</p>
+            <details><summary>Reason, accepted inconvenience, compared options</summary>
+              <dl><dt>Decision (full)</dt><dd>Add two buttons to the notification: &quot;Done&quot; and &quot;Remind me in 1 hour&quot;.</dd><dt>Reason</dt><dd>It takes one step (as recommended).</dd><dt>Accepted inconvenience</dt><dd>Button wording and behavior must be checked on each device.</dd><dt>Rejected</dt><dd>A Open only · C Reply to change the due time</dd></dl>
+              <table><thead><tr><th>Option</th><th>Content</th><th>Result</th><th></th></tr></thead><tbody><tr><td>A</td><td>Tapping it opens the app</td><td>—</td><td></td></tr><tr class="pick"><td>B</td><td>Add &quot;Done&quot; and &quot;Remind me in 1 hour&quot; buttons</td><td>chosen</td><td>recommended</td></tr><tr><td>C</td><td>Type something like &quot;tomorrow morning&quot; in a reply field to change the due time</td><td>—</td><td></td></tr></tbody></table>
+            </details></div>
+        </div>
+      </article></div></div>
+    <div class="dgroup"><h3 class="gh">First use<span>When to ask for permission</span></h3><div class="dgrid">      <article class="dcard" id="d-q03">
+        <header><span class="qid">Q03</span><h3>When should the app ask for notification permission?</h3><span class="rnd">R1</span><span class="seg" role="group" aria-label="Before and after of Q03"><button type="button" data-ba data-v="b" aria-pressed="false">Before</button><button type="button" data-ba data-v="a" aria-pressed="true">After</button></span></header>
+        <div class="body">
+          <div class="fig"><div class="v a on"><svg data-view="B" data-at="3" data-frames="3" viewBox="0 0 520 280" role="img" aria-label="After: Asked right after setting a due time" style="--vbw:520px"><g data-step="1"><rect x="20" y="20" width="140" height="196" rx="16" style="fill:var(--surface);stroke:var(--ink);stroke-width:1.5"/><rect x="70" y="28" width="40" height="5" rx="2.5" style="fill:var(--line)"/><text x="90" y="74" font-size="14" font-weight="700" text-anchor="middle" style="fill:var(--ink)">Welcome</text><path d="M40 196H140" style="stroke:var(--stroke);fill:none;stroke-width:2;stroke-linecap:round"/><path d="M40 206H140" style="stroke:var(--stroke);fill:none;stroke-width:2;stroke-linecap:round"/><text x="24" y="236" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--ink);font-family:var(--mono)">1 First launch</text></g><g data-step="2"><rect x="190" y="20" width="140" height="196" rx="16" style="fill:var(--surface);stroke:var(--ink);stroke-width:1.5"/><rect x="240" y="28" width="40" height="5" rx="2.5" style="fill:var(--line)"/><text x="204" y="62" font-size="13" font-weight="700" text-anchor="start" style="fill:var(--ink)">Buy milk</text><rect x="204" y="72" width="112" height="22" rx="4" style="fill:var(--accent-soft);stroke:var(--accent)"/><text x="212" y="88" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--accent);font-family:var(--mono)">Due 18:00</text><text x="194" y="236" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--ink);font-family:var(--mono)">2 Set a due time</text></g><g data-step="3"><rect x="360" y="20" width="140" height="196" rx="16" style="fill:var(--surface);stroke:var(--ink);stroke-width:1.5"/><rect x="410" y="28" width="40" height="5" rx="2.5" style="fill:var(--line)"/><text x="430" y="70" font-size="22" font-weight="700" text-anchor="middle" style="fill:var(--ink)">17:00</text><text x="364" y="236" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--ink);font-family:var(--mono)">3 1 hour before</text></g><g data-layer="B"><g data-step="2"><rect x="200" y="96" width="120" height="78" rx="8" style="fill:var(--paper);stroke:var(--ink);stroke-width:1.5"/><text x="260" y="112" font-size="12" font-weight="700" text-anchor="middle" style="fill:var(--ink)">Allow</text><text x="260" y="129.4" font-size="12" font-weight="700" text-anchor="middle" style="fill:var(--ink)">notifications?</text><path d="M200 138 H320" style="stroke:var(--line)"/><text x="228" y="162" font-size="12" font-weight="400" text-anchor="middle" style="fill:var(--sub)">Don&#39;t</text><text x="292" y="162" font-size="12" font-weight="700" text-anchor="middle" style="fill:var(--accent)">Allow</text></g><g data-step="3"><rect x="370" y="108" width="120" height="48" rx="8" style="fill:var(--paper);stroke:var(--frame)"/><text x="380" y="128" font-size="12" font-weight="700" text-anchor="start" style="fill:var(--ink)">Buy milk</text><text x="380" y="146" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">Due 18:00</text></g><text x="20" y="266" font-size="12" font-weight="700" text-anchor="start" style="fill:var(--ink)">Asked right after setting a due time. The reason is clear</text></g></svg><p class="cap ok">After: Asked right after setting a due time</p></div><div class="v b"><svg data-view="C" data-at="3" data-frames="3" viewBox="0 0 520 280" role="img" aria-label="Before: No moment to ask" style="--vbw:520px"><g data-step="1"><rect x="20" y="20" width="140" height="196" rx="16" style="fill:var(--surface);stroke:var(--ink);stroke-width:1.5"/><rect x="70" y="28" width="40" height="5" rx="2.5" style="fill:var(--line)"/><text x="90" y="74" font-size="14" font-weight="700" text-anchor="middle" style="fill:var(--ink)">Welcome</text><path d="M40 196H140" style="stroke:var(--stroke);fill:none;stroke-width:2;stroke-linecap:round"/><path d="M40 206H140" style="stroke:var(--stroke);fill:none;stroke-width:2;stroke-linecap:round"/><text x="24" y="236" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--ink);font-family:var(--mono)">1 First launch</text></g><g data-step="2"><rect x="190" y="20" width="140" height="196" rx="16" style="fill:var(--surface);stroke:var(--ink);stroke-width:1.5"/><rect x="240" y="28" width="40" height="5" rx="2.5" style="fill:var(--line)"/><text x="204" y="62" font-size="13" font-weight="700" text-anchor="start" style="fill:var(--ink)">Buy milk</text><rect x="204" y="72" width="112" height="22" rx="4" style="fill:var(--accent-soft);stroke:var(--accent)"/><text x="212" y="88" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--accent);font-family:var(--mono)">Due 18:00</text><text x="194" y="236" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--ink);font-family:var(--mono)">2 Set a due time</text></g><g data-step="3"><rect x="360" y="20" width="140" height="196" rx="16" style="fill:var(--surface);stroke:var(--ink);stroke-width:1.5"/><rect x="410" y="28" width="40" height="5" rx="2.5" style="fill:var(--line)"/><text x="430" y="70" font-size="22" font-weight="700" text-anchor="middle" style="fill:var(--ink)">17:00</text><text x="364" y="236" font-size="12" font-weight="600" text-anchor="start" style="fill:var(--ink);font-family:var(--mono)">3 1 hour before</text></g><g data-layer="C"><g data-step="3"><text x="430" y="136" font-size="13" font-weight="700" text-anchor="middle" style="fill:var(--mute)">Nothing arrives</text></g><text x="20" y="266" font-size="12" font-weight="700" text-anchor="start" style="fill:var(--ink)">Never asked. Reaches only people who open settings</text></g></svg><p class="cap">Before: No moment to ask</p></div></div>
+          <div class="txt"><p class="line">Ask permission when the first due time is set</p>
+            <details><summary>Reason, accepted inconvenience, compared options</summary>
+              <dl><dt>Decision (full)</dt><dd>Ask for notification permission right after the first due time is set.</dd><dt>Reason</dt><dd>The reason is clear on the spot (as recommended).</dd><dt>Accepted inconvenience</dt><dd>People who never set a due time are never asked.</dd><dt>Rejected</dt><dd>A First launch · C Settings only</dd></dl>
+              <table><thead><tr><th>Option</th><th>Content</th><th>Result</th><th></th></tr></thead><tbody><tr><td>A</td><td>Ask the moment the app is opened for the first time</td><td>—</td><td></td></tr><tr class="pick"><td>B</td><td>Ask right after the first due time is set</td><td>chosen</td><td>recommended</td></tr><tr><td>C</td><td>Show no dialog; put a &quot;Notifications on&quot; switch in settings</td><td>—</td><td></td></tr></tbody></table>
+            </details></div>
+        </div>
+      </article></div></div>
+    <div class="dgroup"><h3 class="gh">Keeping it quiet<span>The count and night hours</span></h3><div class="dgrid">      <article class="dcard" id="d-q04">
+        <header><span class="qid">Q04</span><h3>How many notifications per day?</h3><span class="rnd">R2</span><span class="seg" role="group" aria-label="Before and after of Q04"><button type="button" data-ba data-v="b" aria-pressed="false">Before</button><button type="button" data-ba data-v="a" aria-pressed="true">After</button></span></header>
+        <div class="body">
+          <div class="fig"><div class="v a on"><svg data-view="B" viewBox="0 0 520 170" role="img" aria-label="After: 3 + 1 roundup" style="--vbw:520px"><text x="20" y="20" font-size="12" fill="var(--mute)" style="font-family:var(--mono)">Notifications on a day with 12 due items (count)</text><text x="20" y="58" font-size="13" font-weight="700" fill="var(--ink)">Individual</text><g data-layer="B"><rect x="111.4" y="40" width="64.8" height="26" fill="var(--accent)" stroke="var(--accent)" stroke-width="1.5"/><text x="119.4" y="58" font-size="12" fill="var(--paper)">3</text><text x="184.2" y="58" font-size="12" font-weight="700" fill="var(--accent)">3 nearest due times</text></g><text x="20" y="96" font-size="13" font-weight="700" fill="var(--ink)">Roundup</text><g data-layer="B"><rect x="111.4" y="78" width="21.6" height="26" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5"/><text x="119.4" y="96" font-size="12" fill="var(--ink)">1</text><text x="141" y="96" font-size="12" font-weight="700" fill="var(--accent)">Other 9 in one message</text></g><path d="M176.2 34 V110" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 3"/><text x="176.2" y="126" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent)">Comfortable level: 3 (estimate)</text><text x="111.4" y="152" font-size="12" text-anchor="middle" fill="var(--mute)" style="font-family:var(--mono)">0</text><text x="176.2" y="152" font-size="12" text-anchor="middle" fill="var(--mute)" style="font-family:var(--mono)">3</text><text x="240.9" y="152" font-size="12" text-anchor="middle" fill="var(--mute)" style="font-family:var(--mono)">6</text><text x="305.7" y="152" font-size="12" text-anchor="middle" fill="var(--mute)" style="font-family:var(--mono)">9</text><text x="370.5" y="152" font-size="12" text-anchor="middle" fill="var(--mute)" style="font-family:var(--mono)">12</text><text x="435.2" y="152" font-size="12" text-anchor="middle" fill="var(--mute)" style="font-family:var(--mono)">15</text><text x="500" y="152" font-size="12" text-anchor="end" fill="var(--mute)" style="font-family:var(--mono)">18</text></svg><p class="cap ok">After: 3 + 1 roundup</p></div><div class="v b"><svg data-view="A" viewBox="0 0 520 170" role="img" aria-label="Before: 12 with no limit" style="--vbw:520px"><text x="20" y="20" font-size="12" fill="var(--mute)" style="font-family:var(--mono)">Notifications on a day with 12 due items (count)</text><text x="20" y="58" font-size="13" font-weight="700" fill="var(--ink)">Individual</text><g data-layer="A"><rect x="111.4" y="40" width="259.1" height="26" fill="var(--accent)" stroke="var(--accent)" stroke-width="1.5"/><text x="119.4" y="58" font-size="12" fill="var(--paper)">12</text><text x="378.5" y="58" font-size="12" font-weight="700" fill="var(--accent)">People stop looking</text></g><text x="20" y="96" font-size="13" font-weight="700" fill="var(--ink)">Roundup</text><g data-layer="A"><text x="119.4" y="96" font-size="12" font-weight="700" fill="var(--accent)">None</text></g><path d="M176.2 34 V110" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 3"/><text x="176.2" y="126" font-size="12" font-weight="700" text-anchor="middle" fill="var(--accent)">Comfortable level: 3 (estimate)</text><text x="111.4" y="152" font-size="12" text-anchor="middle" fill="var(--mute)" style="font-family:var(--mono)">0</text><text x="176.2" y="152" font-size="12" text-anchor="middle" fill="var(--mute)" style="font-family:var(--mono)">3</text><text x="240.9" y="152" font-size="12" text-anchor="middle" fill="var(--mute)" style="font-family:var(--mono)">6</text><text x="305.7" y="152" font-size="12" text-anchor="middle" fill="var(--mute)" style="font-family:var(--mono)">9</text><text x="370.5" y="152" font-size="12" text-anchor="middle" fill="var(--mute)" style="font-family:var(--mono)">12</text><text x="435.2" y="152" font-size="12" text-anchor="middle" fill="var(--mute)" style="font-family:var(--mono)">15</text><text x="500" y="152" font-size="12" text-anchor="end" fill="var(--mute)" style="font-family:var(--mono)">18</text></svg><p class="cap">Before: 12 with no limit</p></div></div>
+          <div class="txt"><p class="line">3 individual a day; the rest in one evening message</p>
+            <details><summary>Reason, accepted inconvenience, compared options</summary>
+              <dl><dt>Decision (full)</dt><dd>Individual notifications for the 3 nearest due times each day. The rest go out as one roundup at 21:30.</dd><dt>Reason</dt><dd>Urgent ones arrive and busy days stay quiet (as recommended).</dd><dt>Accepted inconvenience</dt><dd>The 4th and later do not fire 1 hour before.</dd><dt>Rejected</dt><dd>A No limit · C 1 per day</dd></dl>
+              <table><thead><tr><th>Option</th><th>Content</th><th>Result</th><th></th></tr></thead><tbody><tr><td>A</td><td>Notify one by one for every due item</td><td>—</td><td></td></tr><tr class="pick"><td>B</td><td>Individual notifications for the 3 nearest due times; the rest in one roundup in the evening</td><td>chosen</td><td>recommended</td></tr><tr><td>C</td><td>Send one roundup in the morning only</td><td>—</td><td></td></tr></tbody></table>
+            </details></div>
+        </div>
+      </article>
+      <article class="dcard" id="d-q06">
+        <header><span class="qid">Q06</span><h3>Should there be quiet hours at night?</h3><span class="rnd">R2</span><span class="seg" role="group" aria-label="Before and after of Q06"><button type="button" data-ba data-v="b" aria-pressed="false">Before</button><button type="button" data-ba data-v="a" aria-pressed="true">After</button></span></header>
+        <div class="body">
+          <div class="fig"><div class="v a on"><svg data-view="B" viewBox="0 0 520 250" role="img" aria-label="After: Moved earlier to 21:30" style="--vbw:520px"><path d="M40 130 H484" style="stroke:var(--ink);stroke-width:1.5"/><path d="M40 125 V135" style="stroke:var(--ink);stroke-width:1.5"/><text x="40" y="154" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">0:00</text><path d="M151 125 V135" style="stroke:var(--ink);stroke-width:1.5"/><text x="151" y="154" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">6:00</text><path d="M262 125 V135" style="stroke:var(--ink);stroke-width:1.5"/><text x="262" y="154" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">12:00</text><path d="M373 125 V135" style="stroke:var(--ink);stroke-width:1.5"/><text x="373" y="154" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">18:00</text><path d="M484 125 V135" style="stroke:var(--ink);stroke-width:1.5"/><text x="484" y="154" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">24:00</text><rect x="460.5" y="125" width="10" height="10" style="fill:var(--ink)"/><text x="483.5" y="174" font-size="12" font-weight="700" text-anchor="end" style="fill:var(--ink)">Invoice 23:00</text><g data-layer="B"><rect x="40" y="90" width="129.5" height="40" style="fill:var(--paper);stroke:var(--mute);stroke-width:1"/><rect x="447" y="90" width="37" height="40" style="fill:var(--paper);stroke:var(--mute);stroke-width:1"/><text x="104.75" y="114" font-size="12" font-weight="400" text-anchor="middle" style="fill:var(--mute)">Quiet</text><circle cx="437.75" cy="72" r="8" style="fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5"/><path d="M437.75 80 V124" style="stroke:var(--accent);stroke-width:1.5;stroke-dasharray:3 3"/><text x="425.75" y="56" font-size="12" font-weight="700" text-anchor="end" style="fill:var(--accent)">Moved earlier to 21:30</text><text x="20" y="206" font-size="12" font-weight="700" text-anchor="start" style="fill:var(--ink)">Nothing fires 22:00 to 7:00.</text><text x="20" y="223.4" font-size="12" font-weight="700" text-anchor="start" style="fill:var(--ink)">Due times in that window are notified earlier</text></g></svg><p class="cap ok">After: Moved earlier to 21:30</p></div><div class="v b"><svg data-view="A" viewBox="0 0 520 250" role="img" aria-label="Before: Fires at 22:00" style="--vbw:520px"><path d="M40 130 H484" style="stroke:var(--ink);stroke-width:1.5"/><path d="M40 125 V135" style="stroke:var(--ink);stroke-width:1.5"/><text x="40" y="154" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">0:00</text><path d="M151 125 V135" style="stroke:var(--ink);stroke-width:1.5"/><text x="151" y="154" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">6:00</text><path d="M262 125 V135" style="stroke:var(--ink);stroke-width:1.5"/><text x="262" y="154" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">12:00</text><path d="M373 125 V135" style="stroke:var(--ink);stroke-width:1.5"/><text x="373" y="154" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">18:00</text><path d="M484 125 V135" style="stroke:var(--ink);stroke-width:1.5"/><text x="484" y="154" font-size="12" font-weight="600" text-anchor="middle" style="fill:var(--mute);font-family:var(--mono)">24:00</text><rect x="460.5" y="125" width="10" height="10" style="fill:var(--ink)"/><text x="483.5" y="174" font-size="12" font-weight="700" text-anchor="end" style="fill:var(--ink)">Invoice 23:00</text><g data-layer="A"><circle cx="447" cy="72" r="8" style="fill:var(--accent-soft);stroke:var(--accent);stroke-width:1.5"/><path d="M447 80 V124" style="stroke:var(--accent);stroke-width:1.5;stroke-dasharray:3 3"/><text x="447" y="56" font-size="12" font-weight="700" text-anchor="middle" style="fill:var(--accent)">22:00</text><text x="20" y="216" font-size="12" font-weight="700" text-anchor="start" style="fill:var(--ink)">Fires at 22:00 at night. May wake someone</text></g></svg><p class="cap">Before: Fires at 22:00</p></div></div>
+          <div class="txt"><p class="line">Quiet 22:00 to 7:00; notify earlier instead</p>
+            <details><summary>Reason, accepted inconvenience, compared options</summary>
+              <dl><dt>Decision (full)</dt><dd>Do not fire from 22:00 to 7:00. For due times in that window, notify at 21:30, before it goes quiet.</dd><dt>Reason</dt><dd>Quiet at night, and still in time for the due time (as recommended).</dd><dt>Accepted inconvenience</dt><dd>21:30 can be earlier than 1 hour before.</dd><dt>Rejected</dt><dd>A No quiet hours · C Leave it to the device</dd></dl>
+              <table><thead><tr><th>Option</th><th>Content</th><th>Result</th><th></th></tr></thead><tbody><tr><td>A</td><td>Fire 1 hour before, whatever the time</td><td>—</td><td></td></tr><tr class="pick"><td>B</td><td>Do not fire from 22:00 to 7:00; notify about due times in that window at 21:30, before it goes quiet</td><td>chosen</td><td>recommended</td></tr><tr><td>C</td><td>The app decides nothing; rely on the device's focus mode</td><td>—</td><td></td></tr></tbody></table>
+            </details></div>
+        </div>
+      </article></div></div>
+  </section>
+  <section class="card" id="s4" aria-labelledby="s4t">
+    <p class="eyebrow">4 · Tasks (in dependency order, drawn from tasks.json)</p>
+    <h2 id="s4t">Build order (drawn from tasks.json)</h2>
+    <div class="prog"><b><span id="p-pct">—</span>%</b><div class="bar" role="progressbar" aria-label="Progress of steps"><i id="p-bar"></i></div><span class="small">Steps <span id="p-steps">—</span></span></div>
+    <p class="lead small">Done <b id="n-done">—</b> / <span id="n-all">—</span> · in progress <span id="n-doing">—</span> · ready now <b id="n-ready">—</b> · blocked <span id="n-blocked">—</span> · dropped <span id="n-dropped">—</span></p>
+    <p class="lead small" id="par"></p>
+    <p class="live"><span id="live-dot" class="dot"></span><span id="live-txt">before reading tasks.js</span><label><input type="checkbox" id="live-on" checked> Re-read automatically</label></p>
+    <p class="openbox" id="task-err" hidden></p>
+    <h3 class="gh">Checklist<span>Open for a check per step. Finished steps are counted by steps_done</span></h3>
+    <ol id="checklist" class="checklist"></ol>
+    <h3 class="gh">Dependencies<span>Top to bottom in dependency order. Press a tag to go to its row. Thick frame: ready now. Dashed: proposal</span></h3>
+    <div class="wide-fig"><svg id="dag" viewBox="0 0 1000 100" role="img" aria-label="Task dependencies. A task below can be taken once the tasks above are done." style="--vbw:1000px"></svg></div>
+    <details><summary>Agent procedure (for_agent in tasks.json)</summary><ol id="for-agent"></ol></details>
+    <div class="tbl"><table class="tasks"><thead><tr><th>ID</th><th>Kind</th><th>Work</th><th>Owner</th><th>From</th><th>Needs first</th><th>Done when</th><th>State</th><th>Deliverables, checked</th></tr></thead><tbody id="task-rows"></tbody></table></div>
+  </section>
+  <section class="card" id="s5" aria-labelledby="s5t">
+    <p class="eyebrow">5 · Rejected, assumptions, conditions to revisit</p>
+    <h2 id="s5t">What to revisit if wrong</h2>
+    <details><summary>Open assumptions and conditions to revisit</summary>
+      <div class="cols"><div><h4>Assumptions</h4><ul><li>Permission is more likely right after a due time is set (assumption). If wrong: revisit Q03 and add an explanation screen before the permission dialog</li><li>3 a day is not annoying (estimate). If wrong: change the limit number in Q04</li></ul></div><div><h4>Conditions to revisit</h4><ul><li>Fewer than half of users allow notifications → revisit Q03</li><li>Roundup notifications go unread → try Q04 option C (one in the morning)</li></ul></div></div>
+    </details>
+  </section>
+  <section class="card" id="s6" aria-labelledby="s6t">
+    <p class="eyebrow">6 · History</p>
+    <h2 id="s6t">How 6 questions were decided in 2 rounds</h2>
+    <div class="wide-fig"><svg viewBox="0 0 1000 223" role="img" aria-label="Round 1：v1 · 3 asked → 3 decided。Round 2：v2 · 3 asked → 3 decided。End：v3 · open 0" style="--vbw:1000px"><path d="M40 44H770" style="fill:none;stroke:var(--ink);stroke-width:1.5"/><circle cx="60" cy="44" r="7" style="stroke:var(--ok);fill:var(--surface);stroke-width:2"/><text x="76" y="38" font-size="14" font-weight="700" text-anchor="start" style="fill:var(--ink)">Round 1</text><rect x="40" y="62" width="230" height="152.39999999999998" rx="4" style="stroke:var(--line);fill:var(--surface);stroke-width:1.2"/><text x="52" y="88" font-size="13" font-weight="700" text-anchor="start" style="fill:var(--ink)">v1 · 3 asked → 3 decided</text><text x="52" y="116" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">All 3 as recomme</text><text x="52" y="133.4" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">nded</text><circle cx="310" cy="44" r="7" style="stroke:var(--ok);fill:var(--surface);stroke-width:2"/><text x="326" y="38" font-size="14" font-weight="700" text-anchor="start" style="fill:var(--ink)">Round 2</text><rect x="290" y="62" width="230" height="152.39999999999998" rx="4" style="stroke:var(--line);fill:var(--surface);stroke-width:1.2"/><text x="302" y="88" font-size="13" font-weight="700" text-anchor="start" style="fill:var(--ink)">v2 · 3 asked → 3 decided</text><text x="302" y="116" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">Q06 note &quot;What a</text><text x="302" y="133.4" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">bout night due t</text><text x="302" y="150.8" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">imes?&quot; → added t</text><text x="302" y="168.2" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">he move-earlier </text><text x="302" y="185.6" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">rule to B</text><circle cx="560" cy="44" r="7" style="stroke:var(--accent);fill:var(--surface);stroke-width:2"/><text x="576" y="38" font-size="14" font-weight="700" text-anchor="start" style="fill:var(--ink)">End</text><rect x="540" y="62" width="230" height="152.39999999999998" rx="4" style="stroke:var(--line);fill:var(--surface);stroke-width:1.2"/><text x="552" y="88" font-size="13" font-weight="700" text-anchor="start" style="fill:var(--ink)">v3 · open 0</text><text x="552" y="116" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">summary.html was</text><text x="552" y="133.4" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)"> written</text><text x="552" y="150.8" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">tasks.json (6 ta</text><text x="552" y="168.2" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">sks)</text><text x="552" y="185.6" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)">Nothing is built</text><text x="552" y="203" font-size="12" font-weight="400" text-anchor="start" style="fill:var(--sub)"> yet</text></svg></div>
+  </section>
+
+</main>
+  <a class="livepill" href="#s4" aria-label="Go to task progress"><span id="lp-dot" class="dot"></span><b id="lp-pct">—</b><span id="lp-done">—</span></a>
+<script type="application/json" id="tasks-data">{"version":1,"discussion":"examples/todo-notify","decided_in":"discussion.md v3 (2026-11-12)","for_agent":["1. A task whose depends_on are all done and whose state is todo can be taken now. Do not take tasks with remaining dependencies until the earlier tasks are done.","2. The parent does tasks that can be taken now one by one, lowest number first. Hand them to subagents only when the owner explicitly says so.","3. Do not write tasks.json by hand; write it with node \u003cgrill-visual>/scripts/task.mjs \u003cthis discussion folder>. When taking a task, task.mjs T01 doing --by \u003cname>; after each step, task.mjs T01 step.","4. Do the steps from top to bottom. Do nothing that is not in the steps or in the discussion's decisions (the IDs in from).","5. If a way different from the decision seems necessary, stop with task.mjs T01 blocked --note \"reason\" and ask the owner.","6. Check done_when with how_to_check.","7. After checking, complete with task.mjs T01 done --proof \"path of the deliverable\" --checked \"what was checked, in one or two lines\". Commit only when the owner asks."],"states":{"todo":"Not started","doing":"In progress","done":"Done","blocked":"Stopped (ask the owner)","dropped":"Dropped (the owner's call)"},"tasks":[{"id":"T01","title":"Build the base for sending device notifications","short":"Notification base","kind":"implementation","owner":"agent","from":["Q01"],"depends_on":[],"proposal":false,"steps":["Put each platform's notification mechanism behind one entry point","Schedule a notification for a given time, and make it cancellable"],"steps_done":0,"files":["src/notify/"],"done_when":"A notification scheduled from a due time appears on the lock screen at that time","how_to_check":"On a real device, set a due time 2 minutes ahead and wait","state":"todo","proof":[],"checked":"","note":""},{"id":"T02","title":"Ask for permission when the first due time is set","short":"Ask permission","kind":"implementation","owner":"agent","from":["Q03"],"depends_on":["T01"],"proposal":false,"steps":["Show the permission dialog right after the first due time is saved","If refused, show a \"Notifications on\" switch in settings"],"steps_done":0,"files":["src/todo/edit"],"done_when":"On a freshly installed device, the dialog appears only right after the first due time is set","how_to_check":"Uninstall and reinstall the app, then set a due time","state":"todo","proof":[],"checked":"","note":""},{"id":"T03","title":"Decide the fire time (1 hour before; move earlier at night)","short":"Fire time","kind":"implementation","owner":"agent","from":["Q02","Q06"],"depends_on":["T01"],"proposal":false,"steps":["Set the fire time to 1 hour before the due time","If it falls between 22:00 and 7:00, set it to 21:30","Write tests for the fire-time rule, including edge cases"],"steps_done":0,"files":["src/notify/schedule"],"done_when":"A 23:00 due time fires at 21:30, and an 18:00 due time fires at 17:00","how_to_check":"Run the fire-time tests","state":"todo","proof":[],"checked":"","note":""},{"id":"T04","title":"Daily limit of 3, and the evening roundup","short":"Limit and roundup","kind":"implementation","owner":"agent","from":["Q04"],"depends_on":["T03"],"proposal":false,"steps":["Sort the day's notifications by nearest due time and send the first 3 individually","Group the rest into one message at 21:30"],"steps_done":0,"files":["src/notify/schedule"],"done_when":"On a day with 12 due items, there are 3 individual notifications and 1 roundup","how_to_check":"Run the 12-item-day test","state":"todo","proof":[],"checked":"","note":""},{"id":"T05","title":"Add \"Done\" and \"In 1 hour\" buttons to the notification","short":"Notification buttons","kind":"implementation","owner":"agent","from":["Q05"],"depends_on":["T01"],"proposal":false,"steps":["\"Done\" marks the to-do as finished and dismisses the notification","\"In 1 hour\" reschedules the same notification for 1 hour later"],"steps_done":0,"files":["src/notify/actions"],"done_when":"You can finish or postpone from the notification without opening the app","how_to_check":"Tap both buttons on a real device","state":"todo","proof":[],"checked":"","note":""},{"id":"T06","title":"Check a whole day on a real device","short":"End-to-end check","kind":"verification","owner":"owner","from":["Q01","Q02","Q03","Q04","Q05","Q06"],"depends_on":["T02","T04","T05"],"proposal":false,"steps":["Create a day with 12 due items and use the app for the whole day","Write down the times it felt noisy"],"steps_done":0,"files":[],"done_when":"After a day of use, there is a record of times it fired too much or too little","how_to_check":"Read the notes you wrote down","state":"todo","proof":[],"checked":"","note":"Compare with the conditions for revisiting (chapter 5 of the summary)"}],"progress":"Progress in summary.html is counted from the total of steps (steps_done ÷ number of steps). A done task counts all its steps."}</script>
+
+<script>
+/* html-foundation の parts.js — 設計図の線画の部品(references/04-parts.md)。
+   どの関数も SVG の文字列を返す。<svg viewBox="0 0 1000 H"> の中に並べて使う。
+   色は base.css の変数(var(--ink) など)を style で指すので、方向とダークに合わせて自動で変わる。
+   線の太さは3段: 区画 1・物と流れ 1.5・主役の流れ 3。強調の色(accent)は主役と押せる物だけに使う。
+   ページに <script> ごと貼るか、<script src> で読む。部品の名前がページの名前とぶつかるなら、全体を関数で包む。 */
+
+/* 色の名前('ink' 'sub' 'mute' 'stroke' 'accent' 'ok' 'ng' 'q' 'surface' 'none' など)を CSS の値にする */
+const V = c => (c === 'none' ? 'none' : c.startsWith('#') || c.startsWith('var(') ? c : `var(--${c})`);
+const ESC = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const ST = (stroke = 'ink', fill = 'surface', w = 1.5, more = '') =>
+  `style="stroke:${V(stroke)};fill:${V(fill)};stroke-width:${w}${more ? ';' + more : ''}"`;
+
+/* 文字。T は1行、TL は複数行。大きさは viewBox の単位で 12 以上にする(05 の物差しが 11px 未満を止める) */
+const T = (x, y, s, c = 'ink', sz = 13, w = 400, a = 'start') =>
+  `<text x="${x}" y="${y}" font-size="${sz}" font-weight="${w}" text-anchor="${a}" style="fill:${V(c)}">${ESC(s)}</text>`;
+const TL = (x, y, ls, c = 'ink', sz = 13, w = 400, a = 'start', lh = 1.45) => ls.map((s, i) => T(x, y + i * sz * lh, s, c, sz, w, a)).join('');
+const MONO = (x, y, s, c = 'mute', sz = 12, a = 'start') =>
+  `<text x="${x}" y="${y}" font-size="${sz}" font-weight="600" text-anchor="${a}" style="fill:${V(c)};font-family:var(--mono)">${ESC(s)}</text>`;
+
+/* 矢じりは開いた V。太さによらず同じ大きさ。1ページに1回、どれかの <svg> の頭に defs(p) を置く。
+   p は ID の頭。同じページに部品の組を2つ置くときは変える。ids: p-ink・p-mute・p-accent・p-ok・p-ng */
+const defs = (p = 'hf') => {
+  const mk = c => `<marker id="${p}-${c}" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="10" markerHeight="10" markerUnits="userSpaceOnUse" orient="auto"><path d="M1.5 1.5L8.5 5L1.5 8.5" style="fill:none;stroke:${V(c)};stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round"/></marker>`;
+  return `<defs>${['ink', 'mute', 'accent', 'ok', 'ng'].map(mk).join('')}</defs>`;
+};
+
+/* 区画: 破線の枠と、左上に等幅の名前。線は 1(いちばん細い) */
+const region = (x, y, w, h, name, c = 'frame') =>
+  `<g><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4" ${ST(c, 'none', 1, 'stroke-dasharray:5 4')}/>${name ? MONO(x + 10, y + 18, name) : ''}</g>`;
+
+/* 流れ: 矢印つきの線 1.5。d は縦横の線で描き、角は丸める。矢印には近くに札(note)を付ける */
+const flow = (d, c = 'ink', p = 'hf', dash = false) =>
+  `<path d="${d}" ${ST(c, 'none', 1.5, `stroke-linecap:round;stroke-linejoin:round${dash ? ';stroke-dasharray:4 4' : ''}`)} marker-end="url(#${p}-${c})"/>`;
+/* 主役の流れ: 線 3。矢じりは付けない(向きは配置と札で見せる) */
+const road = (d, c = 'ink') => `<path d="${d}" ${ST(c, 'none', 3, 'stroke-linecap:round;stroke-linejoin:round')}/>`;
+/* 線の上の札: 地の色で抜いた小さな文字 */
+const note = (x, y, s, c = 'sub', sz = 12, a = 'middle') => {
+  const w = String(s).length * sz * 0.95 + 10;
+  const x0 = a === 'middle' ? x - w / 2 : a === 'end' ? x - w : x;
+  return `<g><rect x="${x0}" y="${y - sz}" width="${w}" height="${sz + 6}" rx="2" style="fill:var(--surface)"/>${T(x0 + w / 2, y + 1, s, c, sz, 400, 'middle')}</g>`;
+};
+
+/* ---------- 物(線 1.5、地は面の色) ---------- */
+const gate = (x, y, s = 1, bar = 'accent', post = 'ink') =>
+  `<g transform="translate(${x},${y}) scale(${s})"><path d="M-14 22V-10M14 22V-10" ${ST(post, 'none', 1.5, 'stroke-linecap:round')}/><rect x="-20" y="-18" width="40" height="8" rx="1" ${ST(bar)}/></g>`;
+const cog = (x, y, s = 1) =>
+  `<g transform="translate(${x},${y}) scale(${s})"><circle r="9" ${ST('ink', 'none', 3, 'stroke-dasharray:2.4 2.3')}/><circle r="6.5" ${ST('ink', 'surface', 1.3)}/><circle r="2" ${ST('ink', 'none', 1.2)}/></g>`;
+const bot = (x, y, s = 1) =>
+  `<g transform="translate(${x},${y}) scale(${s})"><path d="M0 -8V-12" ${ST('ink', 'none', 1.3)}/><circle cy="-13.5" r="1.6" ${ST('ink', 'surface', 1.3)}/><rect x="-9" y="-8" width="18" height="14" rx="2" ${ST('ink', 'surface', 1.3)}/><rect x="-8" y="8" width="16" height="12" rx="2" ${ST('ink', 'surface', 1.3)}/><rect x="-5.5" y="-3" width="3" height="3" style="fill:var(--ink)"/><rect x="2.5" y="-3" width="3" height="3" style="fill:var(--ink)"/></g>`;
+const man = (x, y, s = 1, ghost = false, c = 'ink') =>
+  `<g transform="translate(${x},${y}) scale(${s})"><circle r="7.5" ${ST(c, 'surface', 1.5, ghost ? 'stroke-dasharray:3 2' : '')}/><path d="M-10 24V16Q-10 10 -4 10H4Q10 10 10 16V24" ${ST(c, 'surface', 1.5, ghost ? 'stroke-dasharray:3 2' : '')}/></g>`;
+const house = (x, y, s = 1, label = 'main') =>
+  `<g transform="translate(${x},${y}) scale(${s})"><path d="M-34 -24L0 -48L34 -24" ${ST('ink', 'none', 1.5, 'stroke-linejoin:round')}/><rect x="-28" y="-24" width="56" height="44" ${ST()}/>${T(0, 4, label, 'ink', 13, 700, 'middle')}</g>`;
+const shield = (x, y, s = 1) =>
+  `<g transform="translate(${x},${y}) scale(${s})"><path d="M0 -16L13 -11V0C13 9 6 14 0 17C-6 14 -13 9 -13 0V-11Z" ${ST('ink', 'surface', 1.4)}/><rect x="-5" y="-3" width="10" height="8" rx="1" ${ST('ink', 'none', 1.4)}/><path d="M-3 -3V-6A3 3 0 0 1 3 -6V-3" ${ST('ink', 'none', 1.4)}/></g>`;
+const lock = (x, y, s = 1, c = 'ink') =>
+  `<g transform="translate(${x},${y}) scale(${s})"><path d="M-6 -2V-7A6 6 0 0 1 6 -7V-2" ${ST(c, 'none')}/><rect x="-9" y="-2" width="18" height="14" rx="1.5" ${ST(c)}/><circle cy="4" r="1.8" ${ST(c)}/></g>`;
+/* 書類: 右上を折った紙。title は中の1行目 */
+const doc = (x, y, w, h, title = '', c = 'ink', fill = 'surface') =>
+  `<g><path d="M${x} ${y}H${x + w - 14}L${x + w} ${y + 14}V${y + h}H${x}Z" ${ST(c, fill)}/><path d="M${x + w - 14} ${y}V${y + 14}H${x + w}" ${ST(c, 'none', 1.2)}/>${title ? T(x + 10, y + 20, title, c, 13, 700) : ''}</g>`;
+/* 文の行の代わりの灰の線。3本目ごとに短くする */
+const lines = (x, y, w, n, gap = 9, c = 'stroke') =>
+  Array.from({ length: n }, (_, i) => `<path d="M${x} ${y + i * gap}H${x + w * (i % 3 === 2 ? 0.6 : 1)}" ${ST(c, 'none', 2, 'stroke-linecap:round')}/>`).join('');
+/* 札: 角の小さな四角に言葉。c は線と文字、fill は地 */
+const tag = (x, y, s, c = 'ink', fill = 'surface', sz = 12, w = null) => {
+  const ww = w ?? String(s).length * sz * 0.95 + 14;
+  return `<g><rect x="${x}" y="${y}" width="${ww}" height="${sz + 9}" rx="3" ${ST(c, fill, 1)}/>${T(x + ww / 2, y + sz + 2, s, c, sz, 700, 'middle')}</g>`;
+};
+const crate = (x, y, w, h, lab) =>
+  `<g><path d="M${x} ${y + 16}L${x + w / 2} ${y}L${x + w} ${y + 16}" ${ST('ink', 'none')}/><rect x="${x}" y="${y + 16}" width="${w}" height="${h - 16}" rx="1" ${ST()}/>${T(x + w / 2, y + h / 2 + 14, lab, 'ink', 12, 700, 'middle')}</g>`;
+const cal = (x, y, lab) =>
+  `<g><rect x="${x}" y="${y}" width="44" height="40" rx="2" ${ST()}/><path d="M${x} ${y + 11}H${x + 44}" ${ST('ink', 'none')}/>${T(x + 22, y + 31, lab, 'ink', 12, 700, 'middle')}</g>`;
+/* 付箋: 確かめる物(要確認)に使う。既定は黄土 */
+const sticky = (x, y, w, h, ls, kind = 'q', rot = 0) =>
+  `<g transform="rotate(${rot} ${x} ${y})"><rect x="${x}" y="${y}" width="${w}" height="${h}" rx="2" ${ST(kind, kind + '-soft', 1)}/>${TL(x + 8, y + 18, ls, kind, 12)}</g>`;
+
+/* ---------- 押せる番号と印 ---------- */
+/* 番号: on=押せる(強調色の四角に白い番号と ▸)、off=押せない(灰の枠)。
+   押せる物には data-n を付ける。ページの JS で [data-n] の click と Enter を拾う。▸ は四角の右 14〜19 に出るので隣と離す */
+const badge = (x, y, n, on = true, label = '') => on
+  ? `<g class="nb" data-n="${ESC(n)}" tabindex="0" role="button" aria-label="${ESC(label || n + ' を開く')}"><rect class="bx" x="${x - 11}" y="${y - 11}" width="22" height="22" rx="3" style="fill:var(--accent)"/>${T(x, y + 4.5, n, 'on-accent', 13, 700, 'middle')}<path d="M${x + 14} ${y - 5}l5 5-5 5" ${ST('accent', 'none', 2.2, 'stroke-linecap:round;stroke-linejoin:round')}/></g>`
+  : `<g class="nb off" aria-hidden="true"><rect x="${x - 11}" y="${y - 11}" width="22" height="22" rx="3" ${ST('mute', 'surface', 1.2)}/>${T(x, y + 4.5, n, 'mute', 13, 700, 'middle')}</g>`;
+/* 引き出しの札: (ax,ay) の物から (x,y) の札へ線を引く。kind='q' は要確認(黄土の地)、'fill' は補った所(墨の枠・✎ は呼ぶ側が書く) */
+const callout = (x, y, w, t1, t2, ax, ay, kind = 'q') => {
+  const c = kind === 'q' ? 'q' : 'ink', f = kind === 'q' ? 'q-soft' : 'surface';
+  return `<g><path d="M${x + w / 2} ${y + 38}L${ax} ${ay}" ${ST(c, 'none', 1.2)}/><rect x="${x}" y="${y}" width="${w}" height="38" rx="2" ${ST(c, f, kind === 'q' ? 1 : 1.5)}/>${T(x + 10, y + 16, t1, c, 12, 700)}${T(x + 10, y + 32, t2, 'ink', 12)}</g>`;
+};
+/* grill-visual の図の操作。build.mjs が page.js の後に差し込む。
+   層: <svg data-view="A"> の値を変えると、CSS が <g data-layer> を出し入れする。案を見るボタンと、回答の選択で変わる。
+   コマ: <svg data-at="2"> の値を変えると、CSS が <g data-frame>（そのコマだけ）と <g data-step>（そのコマまで）を出す。 */
+(()=>{
+const $=id=>document.getElementById(id);
+const svgOf=q=>$('svg-'+q);
+function setView(q,keys,fromButton){
+  const s=svgOf(q);if(!s||!s.hasAttribute('data-view')||!keys.length)return;
+  s.setAttribute('data-view',keys.join(' '));
+  document.querySelectorAll(`[data-views="${q}"] button`).forEach(b=>b.setAttribute('aria-pressed',String(keys.includes(b.dataset.v))));
+  const pv=$('pv-'+q),picked=document.querySelector(`input[name="${q}"]:checked`);
+  if(pv&&fromButton)pv.textContent=`Showing option ${keys.join(', ')}`+(picked?'':pv.dataset.sfx||'');
+}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-views] button');if(b)setView(b.closest('[data-views]').dataset.views,[b.dataset.v],true);});
+document.addEventListener('change',e=>{const el=e.target,q=el.name;if(!q||!svgOf(q))return;
+  const keys=[...document.querySelectorAll(`input[name="${q}"]:checked`)].map(i=>i.value);if(keys.length)setView(q,keys,false);});
+// ステップ再生: 押したときだけ進み、「再生」のときだけ自動で送る。最後のコマで止まる
+const players=[...document.querySelectorAll('[data-player]')].map(p=>{
+  const q=p.dataset.player,s=svgOf(q),n=Number(s?.dataset.frames||1),caps=JSON.parse(p.dataset.caps||'[]'),cap=document.querySelector(`[data-cap="${q}"]`);
+  let at=1,t=null;
+  const go=k=>{at=Math.max(1,Math.min(n,k));s.setAttribute('data-at',at);p.querySelector('[data-n]').textContent=`${at} / ${n}`;if(cap&&caps.length)cap.textContent=caps[at-1]||'';};
+  const stop=()=>{clearInterval(t);t=null;p.querySelector('[data-play]').textContent='Play';};
+  p.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+    if(b.hasAttribute('data-play')){if(t){stop();return;}if(at>=n)go(1);b.textContent='Stop';t=setInterval(()=>{go(at+1);if(at>=n)stop();},1600);}
+    else{stop();go(at+Number(b.dataset.st));}});
+  return{q,n,go};
+});
+// 確かめ（verify.mjs）用: i 番目の案と i+1 番目のコマを、すべての図に一度に出す
+window.GV={
+  passes:()=>Math.max(1,...[...document.querySelectorAll('svg[data-keys]')].map(s=>s.dataset.keys.split(' ').length),...players.map(p=>p.n)),
+  pass:i=>{document.querySelectorAll('svg[data-keys]').forEach(s=>{const ks=s.dataset.keys.split(' ');s.setAttribute('data-view',ks[Math.min(i,ks.length-1)]);});
+    players.forEach(p=>p.go(i+1));document.querySelectorAll('svg[data-frames]').forEach(s=>{if(!document.querySelector(`[data-player="${s.id.replace('svg-','')}"]`))s.setAttribute('data-at',Math.min(i+1,Number(s.dataset.frames)));});}
+};
+})();
+/* grill-visual のまとめの JS。build.mjs が parts.js・figure.js の後に差し込む。モデルは読まない・書かない。
+   明暗の切り替え、決定の図の前／後、4章のタスク（tasks.json から進み具合・チェックリスト・依存の図・表）を受け持つ。
+   タスクは埋め込んだ #tasks-data で描き、開いたまま tasks.js（build.mjs が書く）を数秒ごとに読み直して、変わっていたら描き直す。 */
+(()=>{
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+// ページ内の移動は JS で行う。Claude の内蔵ブラウザは data: の写しで開き、#s4 への移動を止めるため。畳んだ中なら先に開く
+document.addEventListener('click',e=>{const a=e.target.closest('a[href^="#"]'),t=a&&document.getElementById(a.getAttribute('href').slice(1));if(!t)return;
+  e.preventDefault();const d=t.closest('details');if(d)d.open=true;t.scrollIntoView({block:'start'});},true);
+// 明暗の切り替え。押したときだけ html の data-theme を書き換える
+document.addEventListener('click',e=>{const b=e.target.closest('[data-theme-set]');if(!b)return;document.documentElement.dataset.theme=b.dataset.themeSet;
+  document.querySelectorAll('[data-theme-set]').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));});
+// 決定の図の前／後
+const ba=(card,v)=>{card.querySelectorAll('.fig .v').forEach(x=>x.classList.toggle('on',x.classList.contains(v)));
+  card.querySelectorAll('[data-ba]').forEach(x=>x.setAttribute('aria-pressed',String(x.dataset.v===v)));};
+document.addEventListener('click',e=>{const b=e.target.closest('[data-ba]');if(b)ba(b.closest('.dcard'),b.dataset.v);});
+// 確かめ（verify.mjs）用: 0 は後、1 は前をすべての決定に出す。コマは figure.js の GV に任せる
+const fg=window.GV;
+window.GV={passes:()=>Math.max(document.querySelector('[data-ba]')?2:1,fg?fg.passes():1),
+  pass:i=>{fg?.pass(i);document.querySelectorAll('.dcard').forEach(c=>{if(c.querySelector('[data-ba]'))ba(c,i%2?'b':'a');});}};
+
+/* ---------- 4 タスク ---------- */
+const root=$('task-rows');if(!root)return;
+const R=(x,y,w,h,s='ink',f='surface',sw=1.5,more='')=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="4" ${ST(s,f,sw,more)}/>`;
+const sdone=t=>t.state==='done'?t.steps.length:Math.min(t.steps_done||0,t.steps.length);
+function tasks(data){
+  const list=data.tasks,ST_JA=data.states||{};
+  const by=Object.fromEntries(list.map(t=>[t.id,t])),errs=[];
+  list.forEach(t=>{if(!ST_JA[t.state])errs.push(`${t.id}: unknown state "${t.state}"`);
+    (t.depends_on||[]).forEach(d=>{if(!by[d])errs.push(`${t.id}: depends_on ${d} does not exist`);});});
+  const lv={},seen=new Set();
+  const L=id=>{if(lv[id]!==undefined)return lv[id];if(seen.has(id)){errs.push(`${id}: dependency cycle`);return 0;}seen.add(id);
+    const ds=(by[id]?.depends_on||[]).filter(d=>by[d]);return(lv[id]=ds.length?1+Math.max(...ds.map(L)):0);};
+  list.forEach(t=>L(t.id));
+  const isDone=id=>by[id]?.state==='done',ready=t=>t.state==='todo'&&(t.depends_on||[]).every(isDone);
+  // 数と進み具合（手順の数で数える。done のタスクは全手順。やめたタスクは分母から外す）
+  const n=s=>list.filter(t=>t.state===s).length,live=list.filter(t=>t.state!=='dropped');
+  const all=live.reduce((a,t)=>a+t.steps.length,0),done=live.reduce((a,t)=>a+sdone(t),0),pct=all?Math.round(done/all*100):0;
+  const set=(id,v)=>{const e=$(id);if(e)e.textContent=v;};
+  set('n-task',list.length);set('n-prop',list.filter(t=>t.proposal).length);set('n-all',live.length);set('n-done',n('done'));set('n-doing',n('doing'));
+  set('n-blocked',n('blocked'));set('n-dropped',n('dropped'));set('n-ready',list.filter(ready).length);set('n-pct',pct);set('p-pct',pct);set('p-steps',`${done} / ${all}`);
+  set('t-done',`${n('done')}/${live.length}`);set('lp-pct',pct+'%');set('lp-done',`${n('done')}/${live.length} done`);
+  ['p-bar','t-bar'].forEach(id=>{const e=$(id);if(e)e.style.width=pct+'%';});
+  $('for-agent').innerHTML=(data.for_agent||[]).map(s=>`<li>${esc(s.replace(/^\d+\.\s*/,''))}</li>`).join('');
+  $('task-err').hidden=!errs.length;$('task-err').textContent=errs.length?'tasks.json is broken: '+errs.join(' / '):'';
+  // 並べて動かせる：いま取れて、作業中のタスクとも互いにも files が重ならないもの（フォルダは前方一致で重なりとみる）
+  const clash=(a,b)=>(a.files||[]).some(f=>(b.files||[]).some(g=>f===g||f.startsWith(g)||g.startsWith(f)));
+  const doing=list.filter(t=>t.state==='doing'),par=[],later=[];
+  list.filter(t=>ready(t)&&!['持ち主','owner'].includes(t.owner)).forEach(t=>([...doing,...par].some(u=>clash(t,u))?later:par).push(t));
+  const who=t=>t.id+(t.run_by?`（${esc(t.run_by)}）`:'');
+  const pe=$('par');if(pe)pe.innerHTML=`<b>Can run side by side</b>: ${par.length?par.map(t=>t.id).join(', '):'none'}`
+    +(doing.length?` · <b>In progress</b>: ${doing.map(who).join(', ')}`:'')+(later.length?` · later because files overlap: ${later.map(t=>t.id).join(', ')}`:'');
+  // チェックリスト（タスクごとのチェック。開くと手順ごとのチェック）
+  const ck=(cls,mark)=>`<span class="ck ${cls}" aria-hidden="true">${mark}</span>`;
+  $('checklist').innerHTML=list.map(t=>{
+    const sd=sdone(t),cls=t.state==='done'?'on':t.state==='blocked'?'ng':t.state==='doing'?'now':t.state==='dropped'?'off':'';
+    const mark=t.state==='done'?'✓':t.state==='blocked'?'!':t.state==='dropped'?'−':'';
+    const steps=t.steps.map((s,i)=>{const c=i<sd?'on':(i===sd&&t.state==='doing')?'now':'';
+      return `<li>${ck(c,i<sd?'✓':'')}<span>${esc(s)}${c==='now'?' <small>← in progress</small>':''}</span></li>`;}).join('');
+    return `<li class="${t.state}${t.proposal?' prop':''}"><details data-k="cl-${t.id}"><summary>${ck(cls,mark)}<span class="cl-id">${t.id}</span>`
+      +`<span class="cl-t">${esc(t.short||t.title)}${t.owner&&!['エージェント','agent'].includes(t.owner)?` <small>(${esc(t.owner)})</small>`:''}</span><span class="cl-n">${sd}/${t.steps.length}</span>`
+      +`<span class="cl-st">${esc((ST_JA[t.state]||t.state)+(t.state==='doing'&&t.run_by?` · ${t.run_by}`:'')+(ready(t)?' · ready now':''))}</span></summary><ol class="cl-steps">${steps}</ol>`
+      +(t.note&&(t.state==='blocked'||t.state==='dropped')?`<p class="cl-proof">${t.state==='blocked'?'Blocked':'Dropped'} reason: ${esc(t.note)}</p>`:'')
+      +((t.proof||[]).length?`<p class="cl-proof">Deliverables: ${t.proof.map(esc).join(', ')}</p>`:'')+'</details></li>';}).join('');
+  // 依存の図（上から依存の順）
+  const rows=[];list.forEach(t=>(rows[lv[t.id]]||=[]).push(t));
+  // 1段に4枚まで。多い段は折り返す
+  const W=228,H=42,GY=64,PER=4,pos={};let y=16;
+  rows.forEach(r=>{r.forEach((t,j)=>{const per=Math.min(r.length-Math.floor(j/PER)*PER,PER),x0=(1000-(per*(W+16)-16))/2;pos[t.id]=[x0+(j%PER)*(W+16),y+Math.floor(j/PER)*GY];});y+=Math.ceil(r.length/PER)*GY;});
+  let lines='',boxes='';
+  list.forEach(t=>(t.depends_on||[]).filter(d=>pos[d]).forEach(d=>{const[x1,y1]=pos[d],[x2,y2]=pos[t.id],a=x1+W/2,b=y1+H,c=x2+W/2;
+    lines+=`<path d="M${a} ${b}C${a} ${b+22} ${c} ${y2-24} ${c} ${y2-3}" ${ST('stroke','none',1.2)} marker-end="url(#tk-mute)"/>`;}));
+  list.forEach(t=>{const[x,yy]=pos[t.id],rd=ready(t);
+    const[s,f,w]=t.state==='dropped'?['line','paper',1.2]:t.state==='done'?['ok','ok-soft',1.5]:t.state==='doing'?['accent','accent-soft',1.5]:t.state==='blocked'?['ng','ng-soft',1.5]:rd?['accent','surface',2.5]:['frame','surface',1.2];
+    const label=t.id+' · '+(t.state==='dropped'?'dropped':ST_JA[t.state]||t.state)+(t.state==='doing'?` ${sdone(t)}/${t.steps.length}`:'')+(rd?' · ready now':'');
+    boxes+=`<a class="tnode" href="#t-${t.id.toLowerCase()}">`+R(x,yy,W,H,s,f,w,t.proposal||t.state==='dropped'?'stroke-dasharray:5 4':'')
+      +MONO(x+10,yy+17,label,s==='frame'||s==='line'?'mute':s,12)+T(x+10,yy+34,t.short||t.title,'ink',12,700)
+      +(t.owner&&!['エージェント','agent'].includes(t.owner)?T(x+W-8,yy+17,t.owner,'q',12,700,'end'):'')+'</a>';});
+  $('dag').setAttribute('viewBox',`0 0 1000 ${y}`);$('dag').innerHTML=defs('tk')+lines+boxes;
+  // 表
+  root.innerHTML=list.map(t=>`<tr id="t-${t.id.toLowerCase()}"${t.proposal?' class="prop"':''}><td class="tid">${t.id}</td>`
+    +`<td>${t.proposal?'<span class="tag prop">proposal</span>':'<span class="tag done">decided</span>'}<br><small>${esc(t.kind)}</small></td>`
+    +`<td><b>${esc(t.title)}</b><details data-k="tb-${t.id}"><summary>Steps, how to check, files</summary><ol>${t.steps.map(s=>`<li>${esc(s)}</li>`).join('')}</ol>`
+    +`<p>How to check: ${esc(t.how_to_check)}</p>${(t.files||[]).length?`<p>Files: ${t.files.map(esc).join(', ')}</p>`:''}${t.note?`<p>Note: ${esc(t.note)}</p>`:''}</details></td>`
+    +`<td>${esc(t.owner)}${t.run_by?`<br><small>${esc(t.run_by)}</small>`:''}</td><td>${(t.from||[]).join(', ')||'—'}</td><td>${(t.depends_on||[]).join(', ')||'—'}</td><td>${esc(t.done_when)}</td>`
+    +`<td>${esc(ST_JA[t.state]||t.state)}<br><small>steps ${sdone(t)}/${t.steps.length}${ready(t)?' · ready now':''}</small></td>`
+    +`<td>${(t.proof||[]).length?t.proof.map(esc).join('<br>'):'—'}${t.checked?`<br><small>${esc(t.checked)}</small>`:''}</td></tr>`).join('');
+}
+// 同じ中身なら描き直さない。描き直すときは、開いていた畳みを開き直す
+let last='';
+function load(d){const s=JSON.stringify(d);if(s===last)return false;
+  const open=[...document.querySelectorAll('#s4 details[open][data-k]')].map(e=>e.dataset.k);
+  last=s;tasks(d);open.forEach(k=>{const e=document.querySelector(`#s4 details[data-k="${k}"]`);if(e)e.open=true;});return true;}
+// 自動の読み直し：script で tasks.js を読む（file:// でも動く）。読めないときは知らせる
+const hm=()=>new Date().toLocaleTimeString('ja-JP',{hour12:false});
+let changedAt='';
+function live(ok,changed){if(changed)changedAt=hm();
+  ['live-dot','lp-dot'].forEach(id=>{const e=$(id);if(e)e.className='dot'+(ok?' ok':'');});
+  $('live-txt').textContent=ok?`Re-reading tasks.js every 5 s · last check ${hm()}${changedAt?` · last changed ${changedAt}`:''}`
+    :'Cannot re-read automatically (tasks.js unreadable). Build, then reopen via file:// or http';}
+function poll(){if(!$('live-on').checked)return;
+  const s=document.createElement('script');s.src='tasks.js?t='+Date.now();
+  s.onload=()=>{s.remove();live(true,!!window.TASKS_DATA&&load(window.TASKS_DATA));};
+  s.onerror=()=>{s.remove();live(false);};document.head.appendChild(s);}
+load(JSON.parse($('tasks-data').textContent));
+poll();setInterval(poll,5000);$('live-on').addEventListener('change',poll);
+})();
+</script>
+</body>
+</html>

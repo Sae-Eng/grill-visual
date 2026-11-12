@@ -1,0 +1,4 @@
+interface:
+  display_name: "図を見ながらグリル"
+  short_description: "図解HTMLを一緒に見ながら計画を詰め、回答ごとに決定を反映する"
+  default_prompt: "$grill-visual この計画を、初めて読む人にも分かる図解HTMLにして、一緒に論点を詰めてください。"
