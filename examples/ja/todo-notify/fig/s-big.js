@@ -9,7 +9,7 @@ const phone = region(20, 20, 280, 370, '画面に出る札', 'ink')
   + '<rect x="74" y="246" width="64" height="28" rx="6" style="fill:var(--accent)"/>' + T(106, 265, '完了', 'on-accent', 12, 700, 'middle')
   + '<rect x="146" y="246" width="80" height="28" rx="6" style="fill:var(--surface);stroke:var(--ink)"/>' + T(186, 265, '1時間後', 'ink', 12, 700, 'middle')
   + chip(62, 300, 'Q01') + chip(106, 300, 'Q05');
-const X = h => 360 + h * 17.5;
+const X = h => 340 + h * 17.5;
 const day = region(320, 20, 460, 370, '一日の鳴り方（期限が多い日）', 'ink')
   + '<rect x="' + X(0) + '" y="110" width="' + (X(7) - X(0)) + '" height="50" style="fill:var(--paper);stroke:var(--mute);stroke-width:1"/>'
   + '<rect x="' + X(22) + '" y="110" width="' + (X(24) - X(22)) + '" height="50" style="fill:var(--paper);stroke:var(--mute);stroke-width:1"/>'
