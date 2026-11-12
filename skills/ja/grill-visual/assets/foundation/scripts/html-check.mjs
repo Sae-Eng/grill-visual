@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// html-foundation の物差し(references/05-checks.md)。
+// 土台の物差し(references/05-checks.md)。
 // 壊れ(文字の重なり・横のはみ出し・小さすぎる文字・色の多すぎる絵)は ✗ で止め、
 // 読みやすさの数(本文の大きさ・行間・1行の字数・矢印の札)は ! で知らせる。
 // 数の線は下の DEFAULTS。ページや仕事ごとに変えるときは --config <JSON> で上書きする。

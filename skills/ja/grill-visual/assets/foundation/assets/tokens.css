@@ -1,4 +1,4 @@
-/* html-foundation の tokens.css — 変数だけ(references/02-look.md・04-parts.md)。
+/* 土台の tokens.css — 変数だけ(references/02-look.md・04-parts.md)。
    既定(書体・文字の段・余白と線と角)は、どの方向でも同じ値。
    色は <html data-direction="blueprint|instrument|paper"> で方向の組を切り替える。無ければ blueprint。
    ダークは OS の設定に従う。<html data-theme="light|dark"> を付けると、そちらを優先する。

@@ -3,7 +3,7 @@
 Make a page where the reader can check with diagrams "how my work changes if I choose this".
 Before adding boxes of text, decide the shape of the subject and the difference to show.
 Keep the way of answering (answer fields and answer bar) the same every time, and conceive the diagram anew for each issue.
-Default look, choice of colors, diagram types and how to draw them, and the measures follow 01 to 05 of `html-foundation`. This document covers what is specific to the discussion page.
+Default look, choice of colors, diagram types and how to draw them, and the measures follow 01 to 05 of the foundation (`assets/foundation/`). This document covers what is specific to the discussion page.
 
 ## 0. Do not mass-produce the same thing
 

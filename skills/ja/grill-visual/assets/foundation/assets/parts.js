@@ -1,4 +1,4 @@
-/* html-foundation の parts.js — 設計図の線画の部品(references/04-parts.md)。
+/* 土台（assets/foundation）の parts.js — 設計図の線画の部品(references/04-parts.md)。
    どの関数も SVG の文字列を返す。<svg viewBox="0 0 1000 H"> の中に並べて使う。
    色は base.css の変数(var(--ink) など)を style で指すので、方向とダークに合わせて自動で変わる。
    線の太さは3段: 区画 1・物と流れ 1.5・主役の流れ 3。強調の色(accent)は主役と押せる物だけに使う。

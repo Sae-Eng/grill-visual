@@ -6,7 +6,7 @@
 ## 描き方
 
 - 数の図（横棒・積み上げ・時間の帯・タイル）は SVG を書かず、`fig/qNN.json` に型と数と札だけを書く（形は [data.md](data.md) の「数の図」）。座標は組み立てが決めるので、書く量と考える量が減る。手で書くのは、場面の絵・画面のモック・型に収まらない図だけ。
-- 場面の図（人・AI・書類・流れ）は、html-foundation の parts.js の部品を `fig/qNN.js` で呼んで描く（`man`・`bot`・`doc`・`flow`・`note` など。一覧は html-foundation の references/04-parts.md の「parts.js」）。部品が形を持つので、SVG を手で書くより短い。例は [../assets/fig.example.js](../assets/fig.example.js)。
+- 場面の図（人・AI・書類・流れ）は、土台（assets/foundation）の parts.js の部品を `fig/qNN.js` で呼んで描く（`man`・`bot`・`doc`・`flow`・`note` など。一覧は 土台の references/04-parts.md の「parts.js」）。部品が形を持つので、SVG を手で書くより短い。例は [../assets/fig.example.js](../assets/fig.example.js)。
 - 新しい問いと、描き直す図（層を足す・崩れを直す）だけを書く。区画の図・まとめの完成形と仕組みの図も、同じ決まりで描く。依存マップは組み立てが描くので描かない（手で描くときだけ、[data.md](data.md) の「図の断片」の札の印を付ける）。
 - 新しい図は、1つのメッセージに Write を並べて全部書く（呼び出しの回数を減らすため）。描いた図と page.json は Read で読み返さない（メインの会話が太るため）。直しは Edit で小さく行う。
 - 全部書いたら、`build.mjs` と `verify.mjs` を1つのコマンドで流す（SKILL.md の手順4・5）。verify が全案・全コマ・ダークを測るので、図ごとの確かめは流さない。
@@ -14,7 +14,7 @@
 
 ```sh
 node {grill-visual}/scripts/build.mjs {議論のフォルダ} --fig {ID}
-node {html-foundation}/scripts/html-check.mjs {議論のフォルダ}/fig/{断片の名前}.check.html
+node {このスキル}/assets/foundation/scripts/html-check.mjs {議論のフォルダ}/fig/{断片の名前}.check.html
 ```
 
 1つ目が、層とコマごとに並べた確かめ用のページ（`fig/q01.check.html`・`fig/map.check.html` など）を書く。
@@ -36,5 +36,5 @@ node {html-foundation}/scripts/html-check.mjs {議論のフォルダ}/fig/{断�
 - 複数選択の問いは、選んだ案の層が重なって出るので、重ねても崩れない形に描く（案ごとに別の行に置く）。
 - ステップ再生は `<g data-frame="2">`（そのコマだけ）か `<g data-step="2">`（そのコマから）。コマの数は注文書のとおり。
 - 矢じりは `<defs><marker id="q01-ar" …>` のように、id の頭に問いの ID を付ける。
-- parts.js の部品で書きたいときは、`.svg` でなく `fig/q01.js` に、部品を使う関数の中身として書き、`<svg…>` の文字列を `return` する。部品の一覧は html-foundation の references/04-parts.md の「parts.js」の表。
+- parts.js の部品で書きたいときは、`.svg` でなく `fig/q01.js` に、部品を使う関数の中身として書き、`<svg…>` の文字列を `return` する。部品の一覧は 土台の references/04-parts.md の「parts.js」の表。
 

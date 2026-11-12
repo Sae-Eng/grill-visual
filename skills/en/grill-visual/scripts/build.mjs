@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // grill-visual の組み立て。議論のフォルダの page.json と図の断片（fig/）から index.html を書く。
-// モデルが書くのは page.json と図の断片だけ。tokens.css・parts.js（html-foundation）と、
+// モデルが書くのは page.json と図の断片だけ。tokens.css・parts.js（土台）と、
 // 骨格の CSS・JS・回答欄・回答バー（assets/frame/）はここで差し込む。回答欄の形を仕組みで守るため。
 // データの形は references/data.md。
 import { readFileSync, writeFileSync, existsSync, renameSync } from 'node:fs';

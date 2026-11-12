@@ -122,7 +122,7 @@ The first round and every later round follow the same steps. Do not rewrite the 
      1. If `tabs_context` shows a tab of the same file, close it with `tabs_close`. Closing also discards that tab's answer memo, so close it only after reading in step 1.
      2. Pass `file://<absolute path>` to `preview_start`.
      3. Bring the browser pane to the front with `show_pane` (`pane: "preview"`). While hidden, the owner cannot see it even if it is open. If it says it is not open in any window, tell the owner it was opened in the browser pane and give the file path.
-   - Keep pages under the working folder. A page under `/tmp` could not be read by the tools even when opened in the built-in browser (confirmed 2026-11-11).
+   - Keep pages under the working folder. A page under `/tmp` could not be read by the tools even when opened in the built-in browser.
    - In other environments, open it in that environment's built-in browser. Without one, open it in the default browser (`open` on macOS, `xdg-open` on Linux).
 
 Explain these three ways to answer.

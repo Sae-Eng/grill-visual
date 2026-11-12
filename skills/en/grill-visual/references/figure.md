@@ -6,7 +6,7 @@ Do not hand diagrams to subagents. In the rebuild record, 16 of the 19 diagram h
 ## How to draw
 
 - Numeric diagrams (horizontal bars, stacks, time bands, tiles) are not written as SVG. Write only the type, numbers and labels to `fig/qNN.json` (the format is "Numeric diagrams" in [data.md](data.md)). The build decides coordinates, so there is less to write and think about. Draw by hand only scenes, screen mock-ups and diagrams that fit no type.
-- Scenes (people, AI, documents, flows) are drawn in `fig/qNN.js` by calling the parts in html-foundation's parts.js (`man`, `bot`, `doc`, `flow`, `note` and so on; the list is "parts.js" in html-foundation's references/04-parts.md). The parts carry their own shape, so this is shorter than hand-written SVG. Example: [../assets/fig.example.js](../assets/fig.example.js).
+- Scenes (people, AI, documents, flows) are drawn in `fig/qNN.js` by calling the parts in the foundation's parts.js (`assets/foundation`) (`man`, `bot`, `doc`, `flow`, `note` and so on; the list is "parts.js" in the foundation's references/04-parts.md). The parts carry their own shape, so this is shorter than hand-written SVG. Example: [../assets/fig.example.js](../assets/fig.example.js).
 - Write only new questions and diagrams to redraw (adding layers, fixing breakage). Section diagrams and the summary's finished-picture and mechanism diagrams follow the same rules. Do not draw the dependency map; the build draws it (only when drawing it by hand, add the tag marks described in "Diagram fragments" in [data.md](data.md)).
 - Write all new diagrams in one message with parallel Write calls (to reduce the number of calls). Do not Read back the diagrams or page.json you wrote (it bloats the main conversation). Fix with small Edits.
 - When everything is written, run `build.mjs` and `verify.mjs` as one command (steps 4 and 5 in SKILL.md). verify measures every option, frame and dark mode, so there is no per-diagram check.
@@ -14,7 +14,7 @@ Do not hand diagrams to subagents. In the rebuild record, 16 of the 19 diagram h
 
 ```sh
 node {grill-visual}/scripts/build.mjs {discussion folder} --fig {ID}
-node {html-foundation}/scripts/html-check.mjs {discussion folder}/fig/{fragment name}.check.html
+node {this skill}/assets/foundation/scripts/html-check.mjs {discussion folder}/fig/{fragment name}.check.html
 ```
 
 The first command writes a check page laid out per layer and frame (`fig/q01.check.html`, `fig/map.check.html` and so on).
@@ -36,4 +36,4 @@ The first command writes a check page laid out per layer and frame (`fig/q01.che
 - For multiple-choice questions the chosen options' layers are shown on top of each other, so draw them so that they do not collide when stacked (put each option on its own row).
 - A step player uses `<g data-frame="2">` (only that frame) or `<g data-step="2">` (from that frame on). The number of frames follows the order.
 - Prefix marker ids with the question ID, as in `<defs><marker id="q01-ar" …>`.
-- To draw with the parts in parts.js, write `fig/q01.js` instead of `.svg`, as the body of a function that uses the parts and `return`s the `<svg…>` string. The list of parts is the "parts.js" table in html-foundation's references/04-parts.md.
+- To draw with the parts in parts.js, write `fig/q01.js` instead of `.svg`, as the body of a function that uses the parts and `return`s the `<svg…>` string. The list of parts is the "parts.js" table in the foundation's references/04-parts.md.
